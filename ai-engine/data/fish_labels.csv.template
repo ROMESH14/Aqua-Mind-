@@ -1,0 +1,9 @@
+species,tank_type,volume_liters,ph,temp,ammonia,compatible
+Neon Tetra,Community,60,7.0,25,0.0,1
+Corydoras,Community,80,7.2,24,0.0,1
+Guppy,Community,40,7.1,26,0.01,1
+Cherry Barb,Planted,100,6.8,25,0.0,1
+Otocinclus,Planted,60,6.9,24,0.0,1
+Silver Dollar,Monster Fish,200,7.0,26,0.0,1
+Bichir,Monster Fish,300,7.2,27,0.0,1
+Bala Shark,Monster Fish,250,7.1,26,0.01,1

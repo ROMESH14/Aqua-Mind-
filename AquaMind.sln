@@ -1,0 +1,48 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9F1E7A4F755F}") = "AquaMind.Launcher", "AquaMind.Launcher\AquaMind.Launcher.csproj", "{8D2F0B53-9C6E-5432-AF4B-2E5D6C7B8190}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A0B1C2D3-E4F5-6789-ABCD-EF0123456789}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{B1C2D3E4-F5A6-7890-BCDE-F01234567890}"
+	ProjectSection(SolutionItems) = preProject
+		backend\package.json = backend\package.json
+		backend\server.js = backend\server.js
+		backend\.env.example = backend\.env.example
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "frontend", "frontend", "{C2D3E4F5-A6B7-8901-CDEF-012345678901}"
+	ProjectSection(SolutionItems) = preProject
+		frontend\package.json = frontend\package.json
+		frontend\src\App.js = frontend\src\App.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ai-engine", "ai-engine", "{D3E4F5A6-B7C8-9012-DEF0-123456789012}"
+	ProjectSection(SolutionItems) = preProject
+		ai-engine\app.py = ai-engine\app.py
+		ai-engine\requirements.txt = ai-engine\requirements.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8D2F0B53-9C6E-5432-AF4B-2E5D6C7B8190}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D2F0B53-9C6E-5432-AF4B-2E5D6C7B8190}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D2F0B53-9C6E-5432-AF4B-2E5D6C7B8190}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D2F0B53-9C6E-5432-AF4B-2E5D6C7B8190}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B1C2D3E4-F5A6-7890-BCDE-F01234567890} = {A0B1C2D3-E4F5-6789-ABCD-EF0123456789}
+		{C2D3E4F5-A6B7-8901-CDEF-012345678901} = {A0B1C2D3-E4F5-6789-ABCD-EF0123456789}
+		{D3E4F5A6-B7C8-9012-DEF0-123456789012} = {A0B1C2D3-E4F5-6789-ABCD-EF0123456789}
+	EndGlobalSection
+EndGlobal

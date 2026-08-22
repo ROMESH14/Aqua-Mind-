@@ -1,31 +1,62 @@
-function TemperatureChart() {
+function buildChartPoints(points, width = 700, height = 160) {
+  const temps = points.map((p) => p.temperature);
+  const minTemp = Math.min(...temps) - 1;
+  const maxTemp = Math.max(...temps) + 1;
+  const range = maxTemp - minTemp || 1;
+  const padY = 20;
+  const chartH = height - padY - 30;
+
+  return points.map((point, i) => {
+    const x = points.length === 1 ? width / 2 : 60 + (i / (points.length - 1)) * (width - 120);
+    const y = padY + chartH - ((point.temperature - minTemp) / range) * chartH;
+    return { x, y, temp: point.temperature, date: point.recordedAt };
+  });
+}
+
+function formatLabel(dateStr) {
+  return new Date(dateStr).toLocaleDateString('en-GB', { weekday: 'short' });
+}
+
+function TemperatureChart({ trends = [] }) {
+  const series = trends.find((t) => t.points?.length > 0);
+  if (!series) return null;
+
+  const coords = buildChartPoints(series.points);
+  const linePoints = coords.map((c) => `${c.x},${c.y}`).join(' ');
+  const areaPath = coords.length
+    ? `M${coords[0].x},${coords[0].y} ${coords.slice(1).map((c) => `L${c.x},${c.y}`).join(' ')} L${coords[coords.length - 1].x},140 L${coords[0].x},140 Z`
+    : '';
+  const minTemp = Math.min(...coords.map((c) => c.temp));
+  const maxTemp = Math.max(...coords.map((c) => c.temp));
+
   return (
     <div className="chart-area">
+      {series.name && (
+        <div className="chart-series-label">{series.name}</div>
+      )}
       <svg className="chart-svg" viewBox="0 0 700 160" preserveAspectRatio="none">
         <defs>
-          <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(196,30,36,0.3)" />
-            <stop offset="100%" stopColor="rgba(196,30,36,0)" />
+          <linearGradient id="aquaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(45,212,191,0.35)" />
+            <stop offset="100%" stopColor="rgba(45,212,191,0)" />
           </linearGradient>
         </defs>
         <line x1="0" y1="30" x2="700" y2="30" className="chart-grid" strokeDasharray="4 4" />
-        <line x1="0" y1="70" x2="700" y2="70" className="chart-grid" strokeDasharray="4 4" />
-        <line x1="0" y1="110" x2="700" y2="110" className="chart-grid" strokeDasharray="4 4" />
-        <text x="8" y="34" className="chart-label">28°</text>
-        <text x="8" y="74" className="chart-label">26°</text>
-        <text x="8" y="114" className="chart-label">24°</text>
-        <text x="80" y="150" className="chart-label" textAnchor="middle">Mon</text>
-        <text x="180" y="150" className="chart-label" textAnchor="middle">Tue</text>
-        <text x="280" y="150" className="chart-label" textAnchor="middle">Wed</text>
-        <text x="380" y="150" className="chart-label" textAnchor="middle">Thu</text>
-        <text x="480" y="150" className="chart-label" textAnchor="middle">Fri</text>
-        <text x="580" y="150" className="chart-label" textAnchor="middle">Sat</text>
-        <text x="660" y="150" className="chart-label" textAnchor="middle">Sun</text>
-        <path className="chart-area-fill" d="M80,95 L180,90 L280,85 L380,75 L480,80 L580,70 L660,65 L660,140 L80,140 Z" />
-        <polyline className="chart-line-primary" points="80,95 180,90 280,85 380,75 480,80 580,70 660,65" />
-        <polyline className="chart-line-secondary" points="80,105 180,108 280,100 380,95 480,102 580,98 660,90" />
-        <circle cx="660" cy="65" r="4" className="chart-dot" />
-        <circle cx="580" cy="70" r="4" className="chart-dot" />
+        <line x1="0" y1="80" x2="700" y2="80" className="chart-grid" strokeDasharray="4 4" />
+        <line x1="0" y1="130" x2="700" y2="130" className="chart-grid" strokeDasharray="4 4" />
+        <text x="8" y="34" className="chart-label">{maxTemp.toFixed(0)}°</text>
+        <text x="8" y="84" className="chart-label">{((maxTemp + minTemp) / 2).toFixed(0)}°</text>
+        <text x="8" y="134" className="chart-label">{minTemp.toFixed(0)}°</text>
+        {coords.map((c) => (
+          <text key={c.date} x={c.x} y="150" className="chart-label" textAnchor="middle">
+            {formatLabel(c.date)}
+          </text>
+        ))}
+        {areaPath && <path className="chart-area-fill" d={areaPath} />}
+        {linePoints && <polyline className="chart-line-primary" points={linePoints} />}
+        {coords.map((c) => (
+          <circle key={`dot-${c.date}`} cx={c.x} cy={c.y} r="4" className="chart-dot" />
+        ))}
       </svg>
     </div>
   );

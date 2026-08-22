@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import TabBar from '../components/ui/TabBar';
 import SectionHeader from '../components/ui/SectionHeader';
+import Select from '../components/ui/Select';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
 import { tankService } from '../services/tankService';
@@ -73,7 +73,21 @@ function WaterQuality() {
             <div className="page-title">Water Quality</div>
             <div className="page-subtitle">Monitor and log water parameters for all tanks</div>
           </div>
-          <button type="button" className="btn btn-primary" disabled={!tanks.length} onClick={() => setShowModal(true)}>＋ Log Parameters</button>
+          <div className="page-header-actions">
+            {tanks.length > 0 && (
+              <Select
+                variant="header"
+                value={selectedTank}
+                onChange={(e) => setSelectedTank(parseInt(e.target.value, 10))}
+                aria-label="Select tank"
+              >
+                {tanks.map((t, index) => (
+                  <option key={t.id} value={index}>{t.name}</option>
+                ))}
+              </Select>
+            )}
+            <button type="button" className="btn btn-primary" disabled={!tanks.length} onClick={() => setShowModal(true)}>＋ Log Parameters</button>
+          </div>
         </div>
 
         {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
@@ -86,8 +100,6 @@ function WaterQuality() {
           </EmptyState>
         ) : (
           <>
-            <TabBar tabs={tanks.map((t) => t.name)} onChange={setSelectedTank} />
-
             <SectionHeader icon="⚗️" title="Current Readings">
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                 {latest?.recordedAt ? `Last updated ${formatDate(latest.recordedAt)}` : 'No readings yet'}
@@ -145,7 +157,7 @@ function WaterQuality() {
           <Modal title="Log Water Parameters" onClose={() => setShowModal(false)}>
             <form onSubmit={handleLog}>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                Logging for: <strong style={{ color: 'var(--white)' }}>{tanks[selectedTank]?.name}</strong>
+                Logging for: <strong style={{ color: 'var(--text-primary)' }}>{tanks[selectedTank]?.name}</strong>
               </p>
               <div className="form-row">
                 <div className="form-group"><label className="form-label">pH</label><input className="form-input" type="number" step="0.1" value={form.pH} onChange={(e) => setForm({ ...form, pH: e.target.value })} /></div>

@@ -68,4 +68,4 @@ async function remove(req, res) {
   res.json({ message: 'Tank deleted' });
 }
 
-module.exports = { getAll, getOne, create, update, remove, formatTank };
+module.exports = { getAll, getOne, create, update, remove };

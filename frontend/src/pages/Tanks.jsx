@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import TankCard from '../components/ui/TankCard';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
+import Select from '../components/ui/Select';
 import { tankService } from '../services/tankService';
 import { mapTankForCard } from '../utils/tankMapper';
 
@@ -79,13 +80,13 @@ function Tanks() {
               </div>
               <div className="form-group">
                 <label className="form-label">Tank Type</label>
-                <select className="form-input" value={form.tankType} onChange={(e) => setForm({ ...form, tankType: e.target.value })}>
+                <Select value={form.tankType} onChange={(e) => setForm({ ...form, tankType: e.target.value })}>
                   <option value="">Select type</option>
                   <option value="Community">Community</option>
                   <option value="Planted">Planted</option>
                   <option value="Monster Fish">Monster Fish</option>
                   <option value="Nano">Nano</option>
-                </select>
+                </Select>
               </div>
               <div className="form-row">
                 <div className="form-group">

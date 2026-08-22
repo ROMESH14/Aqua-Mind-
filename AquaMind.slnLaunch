@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "Aqua Mind",
+    "Projects": [
+      {
+        "Path": "AquaMind.Launcher\\AquaMind.Launcher.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

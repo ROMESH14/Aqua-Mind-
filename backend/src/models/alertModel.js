@@ -1,11 +1,15 @@
-const { getPool, isSqlite } = require('../config/db');
+const { getPool, isSqlite, isMysql } = require('../config/db');
+const { queryOne, queryAll, execute, safeLimit } = require('../config/dbHelpers');
 
 async function create(userId, { tankId, alertType, title, detail }) {
   const conn = await getPool();
-  if (isSqlite(conn)) {
-    const info = conn.db.prepare('INSERT INTO Alerts (UserID, TankID, AlertType, Title, Detail) VALUES (?, ?, ?, ?, ?)')
-      .run(userId, tankId || null, alertType, title, detail || null);
-    return conn.db.prepare('SELECT * FROM Alerts WHERE AlertID = ?').get(info.lastInsertRowid);
+  if (isSqlite(conn) || isMysql(conn)) {
+    const info = await execute(
+      conn,
+      'INSERT INTO Alerts (UserID, TankID, AlertType, Title, Detail) VALUES (?, ?, ?, ?, ?)',
+      [userId, tankId || null, alertType, title, detail || null]
+    );
+    return queryOne(conn, 'SELECT * FROM Alerts WHERE AlertID = ?', [info.lastInsertRowid || info.insertId]);
   }
   const result = await conn.pool.request()
     .input('userId', conn.sql.Int, userId).input('tankId', conn.sql.Int, tankId || null)
@@ -18,10 +22,17 @@ async function create(userId, { tankId, alertType, title, detail }) {
 async function getByUser(userId, limit = 20) {
   const conn = await getPool();
   if (isSqlite(conn)) {
-    return conn.db.prepare(`
+    return queryAll(conn, `
       SELECT a.*, t.Name AS TankName FROM Alerts a LEFT JOIN Tanks t ON t.TankID = a.TankID
       WHERE a.UserID = ? ORDER BY a.CreatedAt DESC LIMIT ?
-    `).all(userId, limit);
+    `, [userId, limit]);
+  }
+  if (isMysql(conn)) {
+    const lim = safeLimit(limit, 20, 200);
+    return queryAll(conn, `
+      SELECT a.*, t.Name AS TankName FROM Alerts a LEFT JOIN Tanks t ON t.TankID = a.TankID
+      WHERE a.UserID = ? ORDER BY a.CreatedAt DESC LIMIT ${lim}
+    `, [userId]);
   }
   const result = await conn.pool.request().input('userId', conn.sql.Int, userId).input('limit', conn.sql.Int, limit).query(`
     SELECT TOP (@limit) a.*, t.Name AS TankName FROM Alerts a LEFT JOIN Tanks t ON t.TankID = a.TankID
@@ -29,14 +40,4 @@ async function getByUser(userId, limit = 20) {
   return result.recordset;
 }
 
-async function countUnread(userId) {
-  const conn = await getPool();
-  if (isSqlite(conn)) {
-    return conn.db.prepare('SELECT COUNT(*) AS count FROM Alerts WHERE UserID = ? AND IsRead = 0').get(userId).count;
-  }
-  const result = await conn.pool.request().input('userId', conn.sql.Int, userId)
-    .query('SELECT COUNT(*) AS count FROM Alerts WHERE UserID = @userId AND IsRead = 0');
-  return result.recordset[0].count;
-}
-
-module.exports = { create, getByUser, countUnread };
+module.exports = { create, getByUser };

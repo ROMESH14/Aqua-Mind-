@@ -1,0 +1,9 @@
+lighting,co2,ph,temp,plant_name,suitable
+low,none,7.0,25,Java Fern,1
+low,none,6.8,24,Anubias,1
+medium,low,7.0,25,Vallisneria,1
+medium,low,6.9,26,Hornwort,1
+high,high,6.8,25,Cryptocoryne,1
+high,high,7.1,26,Rotala,1
+low,none,7.2,24,Java Moss,1
+medium,medium,6.9,25,Amazon Sword,1

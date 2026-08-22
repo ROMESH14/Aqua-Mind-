@@ -63,7 +63,7 @@ function Dashboard() {
         <div className="dash-grid">
           <div className="card dash-wide">
             <SectionHeader icon="📈" title="Temperature Trend — Last 7 days" />
-            {hasTrend ? <TemperatureChart /> : (
+            {hasTrend ? <TemperatureChart trends={data.temperatureTrend} /> : (
               <EmptyState icon="📈" title="No temperature data" message="Log water readings to see temperature trends." />
             )}
           </div>

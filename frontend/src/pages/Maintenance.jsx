@@ -3,6 +3,7 @@ import SectionHeader from '../components/ui/SectionHeader';
 import TaskItem from '../components/ui/TaskItem';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
+import Select from '../components/ui/Select';
 import { maintenanceService } from '../services/maintenanceService';
 import { tankService } from '../services/tankService';
 
@@ -148,10 +149,10 @@ function Maintenance() {
               </div>
               <div className="form-group">
                 <label className="form-label">Tank (optional)</label>
-                <select className="form-input" value={form.tankId} onChange={(e) => setForm({ ...form, tankId: e.target.value })}>
+                <Select value={form.tankId} onChange={(e) => setForm({ ...form, tankId: e.target.value })}>
                   <option value="">All tanks</option>
                   {tanks.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
+                </Select>
               </div>
               <button type="submit" className="auth-btn">Add Task</button>
             </form>

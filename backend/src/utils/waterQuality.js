@@ -56,4 +56,4 @@ function evaluateParam(label, value) {
   return { status, color: paramColor(status === 'good' ? 'good' : status) };
 }
 
-module.exports = { evaluateReading, evaluateParam, paramColor };
+module.exports = { evaluateReading, evaluateParam };

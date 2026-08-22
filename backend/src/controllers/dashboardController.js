@@ -13,7 +13,7 @@ function timeAgo(date) {
 }
 
 function formatAlert(alert) {
-  const icons = { alert: '⚠️', warn: '🌡️', ok: '✅' };
+  const icons = { alert: '⚠️', warn: '🌡️' };
   return {
     type: alert.AlertType,
     icon: icons[alert.AlertType] || '🔔',
@@ -41,12 +41,12 @@ async function getDashboard(req, res) {
     {
       variant: 'accent', icon: '🐠', value: String(tankCount), label: 'Active Tanks',
       change: tankCount > 0 ? 'Tracking' : '—', changeType: 'up',
-      valueColor: tankCount > 0 ? 'var(--red-light)' : 'var(--text-muted)',
+      valueColor: tankCount > 0 ? 'var(--aqua-light)' : 'var(--text-muted)',
     },
     {
       variant: 'light', icon: '🐟', value: String(totalFish), label: 'Total Fish',
       change: totalFish > 0 ? 'Across tanks' : '—', changeType: 'up',
-      valueColor: totalFish > 0 ? 'var(--white)' : 'var(--text-muted)',
+      valueColor: totalFish > 0 ? 'var(--cyan)' : 'var(--text-muted)',
     },
     {
       variant: 'warn', icon: '⚗️',
@@ -58,7 +58,7 @@ async function getDashboard(req, res) {
     {
       variant: 'danger', icon: '📅', value: String(tasksDue), label: 'Tasks Due Today',
       change: overdueCount > 0 ? `${overdueCount} overdue` : '—', changeType: 'warn',
-      valueColor: tasksDue > 0 ? 'var(--red-light)' : 'var(--text-muted)',
+      valueColor: tasksDue > 0 ? 'var(--warn)' : 'var(--text-muted)',
     },
   ];
 
@@ -98,7 +98,6 @@ async function getDashboard(req, res) {
     alerts: alerts.map(formatAlert),
     tasks: formattedTasks,
     temperatureTrend: Object.values(tanks),
-    alertCount: alerts.filter((a) => !a.IsRead).length,
   });
 }
 

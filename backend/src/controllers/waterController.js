@@ -91,4 +91,4 @@ async function logReading(req, res) {
   res.status(201).json(formatted);
 }
 
-module.exports = { getLatest, getHistory, logReading, formatReading };
+module.exports = { getLatest, getHistory, logReading };

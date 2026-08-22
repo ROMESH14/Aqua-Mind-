@@ -4,11 +4,13 @@ import Logo from '../ui/Logo';
 import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
-  { path: '/', label: 'Dashboard', end: true },
+  { path: '/dashboard', label: 'Dashboard', end: true },
   { path: '/tanks', label: 'My Tanks' },
   { path: '/water', label: 'Water Quality' },
   { path: '/maintenance', label: 'Maintenance' },
-  { path: '/ai', label: 'AI Advisor' },
+  { path: '/ai/species', label: 'Species' },
+  { path: '/ai/predictions', label: 'ML Predict' },
+  { path: '/ai/plants', label: 'Plants' },
 ];
 
 function Navbar() {
@@ -47,7 +49,6 @@ function Navbar() {
         </div>
 
         <div className="nav-right">
-          <div className="nav-notif" title="Alerts">🔔</div>
           <button type="button" className="nav-avatar" title={user?.username || 'Account'} onClick={handleLogout}>{initials}</button>
           <button
             type="button"
@@ -64,7 +65,9 @@ function Navbar() {
         <div className="mobile-menu-backdrop" onClick={closeMenu} />
         <div className="mobile-menu-panel">
           <div className="mobile-menu-header">
-            <Logo size="sm" />
+            <NavLink to="/" className="nav-logo" onClick={closeMenu}>
+              <Logo size="sm" />
+            </NavLink>
             <button type="button" className="mobile-menu-close" onClick={closeMenu}>✕</button>
           </div>
           {navItems.map((item) => (

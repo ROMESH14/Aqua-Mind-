@@ -1,9 +1,11 @@
-const { getPool, isSqlite } = require('../config/db');
+const { getPool, isSqlite, isMysql } = require('../config/db');
+const { queryOne, queryAll, execute } = require('../config/dbHelpers');
 
 async function findByEmail(email) {
   const conn = await getPool();
-  if (isSqlite(conn)) {
-    return conn.db.prepare('SELECT * FROM Users WHERE Email = ?').get(email);
+  const normalized = String(email || '').trim().toLowerCase();
+  if (isSqlite(conn) || isMysql(conn)) {
+    return queryOne(conn, 'SELECT * FROM Users WHERE LOWER(Email) = ?', [normalized]);
   }
   const result = await conn.pool.request()
     .input('email', conn.sql.NVarChar, email)
@@ -13,8 +15,8 @@ async function findByEmail(email) {
 
 async function findByUsername(username) {
   const conn = await getPool();
-  if (isSqlite(conn)) {
-    return conn.db.prepare('SELECT * FROM Users WHERE Username = ?').get(username);
+  if (isSqlite(conn) || isMysql(conn)) {
+    return queryOne(conn, 'SELECT * FROM Users WHERE Username = ?', [username]);
   }
   const result = await conn.pool.request()
     .input('username', conn.sql.NVarChar, username)
@@ -24,8 +26,8 @@ async function findByUsername(username) {
 
 async function findById(id) {
   const conn = await getPool();
-  if (isSqlite(conn)) {
-    return conn.db.prepare('SELECT UserID, Username, Email, CreatedAt FROM Users WHERE UserID = ?').get(id);
+  if (isSqlite(conn) || isMysql(conn)) {
+    return queryOne(conn, 'SELECT UserID, Username, Email, CreatedAt FROM Users WHERE UserID = ?', [id]);
   }
   const result = await conn.pool.request()
     .input('id', conn.sql.Int, id)
@@ -35,10 +37,9 @@ async function findById(id) {
 
 async function create({ username, email, passwordHash }) {
   const conn = await getPool();
-  if (isSqlite(conn)) {
-    const stmt = conn.db.prepare('INSERT INTO Users (Username, Email, PasswordHash) VALUES (?, ?, ?)');
-    const info = stmt.run(username, email, passwordHash);
-    return conn.db.prepare('SELECT UserID, Username, Email, CreatedAt FROM Users WHERE UserID = ?').get(info.lastInsertRowid);
+  if (isSqlite(conn) || isMysql(conn)) {
+    const info = await execute(conn, 'INSERT INTO Users (Username, Email, PasswordHash) VALUES (?, ?, ?)', [username, email, passwordHash]);
+    return queryOne(conn, 'SELECT UserID, Username, Email, CreatedAt FROM Users WHERE UserID = ?', [info.lastInsertRowid || info.insertId]);
   }
   const result = await conn.pool.request()
     .input('username', conn.sql.NVarChar, username)

@@ -1,0 +1,14 @@
+{
+  "name": "aquamind",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aqua Mind monorepo — run scripts from the project root",
+  "scripts": {
+    "start": "dotnet run --project AquaMind.Launcher",
+    "dev": "npx concurrently -k -n backend,frontend,ai -c blue,green,magenta \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:ai\"",
+    "start:frontend": "npm start --prefix frontend",
+    "start:backend": "npm run dev --prefix backend",
+    "start:ai": "py ai-engine/app.py",
+    "build": "npm run build --prefix frontend"
+  }
+}

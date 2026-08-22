@@ -20,14 +20,15 @@ async function register(req, res) {
     return res.status(400).json({ message: 'Password must be at least 6 characters' });
   }
 
-  const existing = await userModel.findByEmail(email);
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existing = await userModel.findByEmail(normalizedEmail);
   if (existing) return res.status(409).json({ message: 'Email already registered' });
 
   const existingUser = await userModel.findByUsername(username);
   if (existingUser) return res.status(409).json({ message: 'Username already taken' });
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await userModel.create({ username, email, passwordHash });
+  const user = await userModel.create({ username, email: normalizedEmail, passwordHash });
   const token = signToken(user);
 
   res.status(201).json({
@@ -46,7 +47,16 @@ async function login(req, res) {
   const user = await userModel.findByEmail(email);
   if (!user) return res.status(401).json({ message: 'Invalid email or password' });
 
-  const valid = await bcrypt.compare(password, user.PasswordHash);
+  if (!user.PasswordHash) {
+    return res.status(500).json({ message: 'Account has no password set. Please register again or reset in phpMyAdmin.' });
+  }
+
+  let valid = false;
+  try {
+    valid = await bcrypt.compare(password, user.PasswordHash);
+  } catch {
+    return res.status(500).json({ message: 'Could not verify password. Please register a new account.' });
+  }
   if (!valid) return res.status(401).json({ message: 'Invalid email or password' });
 
   const token = signToken(user);

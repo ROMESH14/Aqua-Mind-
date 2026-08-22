@@ -1,0 +1,74 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Aqua Mind (No Debug)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "noDebug": true,
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Aqua Mind (Full Stack)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Aqua Mind Backend",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/backend",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Aqua Mind Frontend",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "cwd": "${workspaceFolder}/frontend",
+      "console": "integratedTerminal",
+      "env": {
+        "PORT": "3003",
+        "BROWSER": "none",
+        "REACT_APP_API_URL": "/api"
+      },
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Aqua Mind AI Engine",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "py",
+      "runtimeArgs": ["app.py"],
+      "cwd": "${workspaceFolder}/ai-engine",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Open Aqua Mind in Browser",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3003",
+      "webRoot": "${workspaceFolder}/frontend/src"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Aqua Mind + Browser",
+      "configurations": ["Aqua Mind (Full Stack)", "Open Aqua Mind in Browser"],
+      "stopAll": true
+    }
+  ]
+}

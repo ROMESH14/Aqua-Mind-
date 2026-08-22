@@ -2,6 +2,7 @@ const DB_DRIVER = process.env.DB_DRIVER || 'sqlite';
 
 let pool = null;
 let sqliteDb = null;
+let mysqlPool = null;
 
 async function getPool() {
   if (DB_DRIVER === 'sqlite') {
@@ -9,6 +10,14 @@ async function getPool() {
       sqliteDb = require('./sqlite');
     }
     return { driver: 'sqlite', db: sqliteDb };
+  }
+
+  if (DB_DRIVER === 'mysql') {
+    if (!mysqlPool) {
+      const { getMysqlPool } = require('./mysql');
+      mysqlPool = await getMysqlPool();
+    }
+    return { driver: 'mysql', pool: mysqlPool };
   }
 
   const sql = require('mssql');
@@ -37,4 +46,8 @@ function isSqlite(conn) {
   return conn.driver === 'sqlite';
 }
 
-module.exports = { getPool, isSqlite };
+function isMysql(conn) {
+  return conn.driver === 'mysql';
+}
+
+module.exports = { getPool, isSqlite, isMysql };
