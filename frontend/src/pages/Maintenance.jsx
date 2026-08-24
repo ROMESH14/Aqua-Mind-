@@ -6,6 +6,7 @@ import Modal from '../components/ui/Modal';
 import Select from '../components/ui/Select';
 import { maintenanceService } from '../services/maintenanceService';
 import { tankService } from '../services/tankService';
+import PageHero from '../components/ui/PageHero';
 
 function Maintenance() {
   const [todayTasks, setTodayTasks] = useState([]);
@@ -64,13 +65,9 @@ function Maintenance() {
   return (
     <div className="page-screen">
       <div className="page">
-        <div className="page-header">
-          <div>
-            <div className="page-title">Maintenance Schedule</div>
-            <div className="page-subtitle">Track and manage all aquarium maintenance tasks</div>
-          </div>
+        <PageHero tone="coral" eyebrow="Care" title="Maintenance" subtitle="Track and manage all aquarium maintenance tasks">
           <button type="button" className="btn btn-primary" onClick={() => setShowModal(true)}>＋ Add Task</button>
-        </div>
+        </PageHero>
 
         {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
 

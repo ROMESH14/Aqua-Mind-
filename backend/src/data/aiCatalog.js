@@ -156,33 +156,100 @@ function scoreFishCompat(name, { ph, temperature, ammonia, volumeLiters }) {
   return Math.max(15, Math.min(98, score));
 }
 
-function scorePlantMatch(name, { lighting, co2, ph, temperature }) {
+function scorePlantMatch(name, params = {}) {
   const profile = PLANT_PROFILES[name];
   if (!profile) return 75;
   let score = 85;
-  const ideal = profile.ideal;
+  const lighting = params.lighting || 'medium';
+  const co2 = params.co2 || 'none';
+  const temp = Number(params.temperature) || 25;
+  const ph = Number(params.ph) || 7;
+  const volume = Number(params.volumeLiters) || 60;
+  const style = String(params.style || params.theme || '').toLowerCase();
+  const experience = String(params.experience || 'beginner').toLowerCase();
+  const substrate = String(params.substrate || 'gravel').toLowerCase();
+  const maintenance = String(params.maintenance || 'medium').toLowerCase();
+  const livestock = String(params.livestock || '').toLowerCase();
 
   if (name === 'Rotala' && lighting !== 'high') score -= 20;
   if (name === 'Java Fern' && lighting === 'high') score -= 5;
   if (name === 'Anubias' && lighting === 'high') score -= 8;
   if (co2 === 'none' && ['Rotala', 'Cryptocoryne'].includes(name)) score -= 10;
   if (co2 === 'high' && name === 'Java Fern') score -= 5;
-
-  const temp = Number(temperature) || 25;
   if (temp > 30) score -= 15;
+  if (ph < 6 || ph > 8) score -= 10;
+
+  if (volume < 40 && ['Amazon Sword', 'Vallisneria'].includes(name)) score -= 14;
+  if (volume >= 80 && ['Amazon Sword', 'Vallisneria'].includes(name)) score += 6;
+
+  if (substrate.includes('soil')) {
+    if (['Cryptocoryne', 'Amazon Sword', 'Rotala', 'Vallisneria'].includes(name)) score += 8;
+    if (['Java Fern', 'Anubias', 'Java Moss'].includes(name)) score -= 2;
+  }
+  if (substrate.includes('sand') && ['Java Fern', 'Anubias', 'Java Moss', 'Hornwort'].includes(name)) score += 6;
+
+  if (experience === 'beginner') {
+    if (['Java Fern', 'Anubias', 'Java Moss', 'Hornwort'].includes(name)) score += 8;
+    if (name === 'Rotala') score -= 16;
+  }
+  if (experience === 'advanced' && name === 'Rotala') score += 8;
+
+  if (maintenance === 'low') {
+    if (['Java Fern', 'Anubias', 'Java Moss'].includes(name)) score += 8;
+    if (name === 'Rotala') score -= 12;
+  }
+
+  if (style.includes('dutch') && ['Rotala', 'Cryptocoryne'].includes(name)) score += 8;
+  if (style.includes('iwagumi') && ['Java Moss', 'Anubias'].includes(name)) score += 8;
+  if (style.includes('jungle') && ['Vallisneria', 'Amazon Sword', 'Hornwort'].includes(name)) score += 8;
+  if (style.includes('nature') && ['Java Fern', 'Anubias', 'Cryptocoryne'].includes(name)) score += 6;
+
+  if (livestock.includes('shrimp') && ['Java Moss', 'Anubias', 'Java Fern'].includes(name)) score += 7;
+
+  const hardness = String(params.waterHardness || 'medium').toLowerCase();
+  const fertilizer = String(params.fertilizer || 'liquid').toLowerCase();
+  const flow = String(params.flow || 'medium').toLowerCase();
+  const goal = String(params.plantGoal || '').toLowerCase();
+  const waterChange = String(params.waterChange || 'weekly').toLowerCase();
+  const budget = String(params.budget || 'medium').toLowerCase();
+
+  if (hardness === 'soft' && ['Cryptocoryne', 'Rotala'].includes(name)) score += 6;
+  if (hardness === 'hard' && ['Vallisneria', 'Java Fern', 'Anubias'].includes(name)) score += 6;
+  if (fertilizer === 'none') {
+    if (['Java Fern', 'Anubias', 'Java Moss', 'Hornwort'].includes(name)) score += 8;
+    if (['Rotala', 'Amazon Sword'].includes(name)) score -= 10;
+  }
+  if (fertilizer.includes('root') && ['Amazon Sword', 'Cryptocoryne', 'Vallisneria'].includes(name)) score += 7;
+  if (fertilizer.includes('liquid') && ['Hornwort', 'Rotala'].includes(name)) score += 5;
+  if (flow === 'low' && ['Anubias', 'Java Moss', 'Java Fern'].includes(name)) score += 5;
+  if (flow === 'high' && ['Vallisneria', 'Hornwort'].includes(name)) score += 5;
+  if (goal.includes('carpet') && name === 'Java Moss') score += 10;
+  if (goal.includes('color') && name === 'Rotala') score += 10;
+  if (goal.includes('low-tech') && ['Java Fern', 'Anubias', 'Java Moss', 'Hornwort'].includes(name)) score += 8;
+  if (waterChange === 'monthly' && ['Java Fern', 'Anubias', 'Java Moss'].includes(name)) score += 6;
+  if (budget === 'low' && ['Java Fern', 'Hornwort', 'Java Moss'].includes(name)) score += 6;
+  if (budget === 'high' && name === 'Rotala') score += 5;
 
   return Math.max(20, Math.min(98, score));
+}
+
+function catalogImage(provided, fallback) {
+  const src = String(provided || '');
+  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/media/')) {
+    return src;
+  }
+  return fallback;
 }
 
 function enrichFish(rec) {
   const profile = FISH_PROFILES[rec.name] || {};
   return {
     ...rec,
-    image: speciesImageUrl(rec.name),
-    scientificName: profile.scientificName || '',
-    description: profile.description || rec.detail || '',
-    care: profile.care || '',
-    ideal: profile.ideal || null,
+    image: catalogImage(rec.image, rec.image || speciesImageUrl(rec.name)),
+    scientificName: rec.scientificName || profile.scientificName || '',
+    description: rec.description || profile.description || rec.detail || '',
+    care: rec.care || profile.care || '',
+    ideal: rec.ideal || profile.ideal || null,
     emoji: rec.emoji || '🐟',
   };
 }
@@ -192,11 +259,11 @@ function enrichPlant(plant) {
   const matchPct = plant.match ? parseInt(plant.match, 10) : plant.compat;
   return {
     ...plant,
-    image: speciesImageUrl(plant.name),
-    scientificName: profile.scientificName || '',
-    description: profile.description || plant.detail || '',
-    care: profile.care || '',
-    ideal: profile.ideal || null,
+    image: catalogImage(plant.image, plant.image || speciesImageUrl(plant.name)),
+    scientificName: plant.scientificName || profile.scientificName || '',
+    description: plant.description || profile.description || plant.detail || '',
+    care: plant.care || profile.care || '',
+    ideal: plant.ideal || profile.ideal || null,
     match: plant.match || `${matchPct || 80}% match`,
     emoji: plant.emoji || '🌱',
   };
@@ -322,6 +389,160 @@ function detailedWaterPredictions(readings) {
   return { predictions, forecasts };
 }
 
+function normalizeTheme(theme, tankType) {
+  const t = String(theme || tankType || 'community').toLowerCase();
+  if (t.includes('plant')) return 'planted';
+  if (t.includes('monster')) return 'monster';
+  if (t.includes('nature')) return 'nature';
+  return 'community';
+}
+
+function designTank(params = {}) {
+  const volume = Number(params.volumeLiters) || 60;
+  const tankType = params.tankType || 'Community';
+  const theme = normalizeTheme(params.theme, tankType);
+  const lighting = params.lighting || 'medium';
+  const livestock = params.livestock || 'mixed';
+
+  const maxFish = Math.max(2, Math.round(volume / (theme === 'monster' ? 20 : 8)));
+  const plantDensity = theme === 'planted' || theme === 'nature' ? 'high' : theme === 'monster' ? 'low' : 'medium';
+
+  const hardscapePref = String(params.hardscape || '').toLowerCase();
+  const hardscape = {
+    planted: ['Driftwood focal piece', 'Dark aqua soil', 'Moss stones along the midground'],
+    nature: ['Iwagumi stone triad', 'Fine sand paths', 'Sparse wood accents'],
+    community: ['Mixed river rock', 'Sand substrate', 'Leaf litter pockets'],
+    monster: ['Stacked slate caves', 'Heavy hardscape along the back', 'Open midwater swim lane'],
+  }[theme];
+  if (hardscapePref === 'wood') hardscape.unshift('Lead with one large driftwood piece');
+  if (hardscapePref === 'rock') hardscape.unshift('Use a stone triangle as the main focal point');
+  if (hardscapePref.includes('wood-rock')) hardscape.unshift('Combine driftwood and rocks so plants can attach');
+
+  const zones = [
+    {
+      name: 'Foreground',
+      role: theme === 'monster' ? 'Open sand and caves' : 'Carpet or low plants',
+      coverage: plantDensity === 'high' ? '60%' : '30%',
+    },
+    {
+      name: 'Midground',
+      role: theme === 'monster' ? 'Rock hideouts' : 'Hardscape + mid-height plants',
+      coverage: plantDensity === 'low' ? '25%' : '40%',
+    },
+    {
+      name: 'Background',
+      role: theme === 'planted' || theme === 'nature' ? 'Tall stem plants' : 'Backdrop and filter hide',
+      coverage: plantDensity === 'high' ? '70%' : '35%',
+    },
+    {
+      name: 'Open swim',
+      role: livestock === 'schooling' ? 'Long unobstructed lane' : 'Center viewing window',
+      coverage: theme === 'monster' ? '50%' : '30%',
+    },
+  ];
+
+  const slotMaps = {
+    planted: [
+      { type: 'plant', label: 'Carpet', zone: 'foreground' },
+      { type: 'plant', label: 'Carpet', zone: 'foreground' },
+      { type: 'open', label: 'Path', zone: 'open' },
+      { type: 'plant', label: 'Carpet', zone: 'foreground' },
+      { type: 'wood', label: 'Wood', zone: 'mid' },
+      { type: 'plant', label: 'Mid plants', zone: 'mid' },
+      { type: 'wood', label: 'Wood', zone: 'mid' },
+      { type: 'plant', label: 'Mid plants', zone: 'mid' },
+      { type: 'plant', label: 'Stems', zone: 'back' },
+      { type: 'plant', label: 'Stems', zone: 'back' },
+      { type: 'filter', label: 'Filter hide', zone: 'back' },
+      { type: 'plant', label: 'Stems', zone: 'back' },
+    ],
+    nature: [
+      { type: 'sand', label: 'Sand', zone: 'foreground' },
+      { type: 'rock', label: 'Stone', zone: 'foreground' },
+      { type: 'sand', label: 'Path', zone: 'open' },
+      { type: 'plant', label: 'Carpet', zone: 'foreground' },
+      { type: 'rock', label: 'Stone', zone: 'mid' },
+      { type: 'open', label: 'View', zone: 'open' },
+      { type: 'rock', label: 'Stone', zone: 'mid' },
+      { type: 'plant', label: 'Mid plants', zone: 'mid' },
+      { type: 'plant', label: 'Stems', zone: 'back' },
+      { type: 'wood', label: 'Wood', zone: 'back' },
+      { type: 'plant', label: 'Stems', zone: 'back' },
+      { type: 'filter', label: 'Filter hide', zone: 'back' },
+    ],
+    community: [
+      { type: 'sand', label: 'Sand', zone: 'foreground' },
+      { type: 'open', label: 'Swim', zone: 'open' },
+      { type: 'sand', label: 'Sand', zone: 'foreground' },
+      { type: 'plant', label: 'Low plants', zone: 'foreground' },
+      { type: 'rock', label: 'Rock', zone: 'mid' },
+      { type: 'fish', label: 'School', zone: 'open' },
+      { type: 'wood', label: 'Wood', zone: 'mid' },
+      { type: 'plant', label: 'Mid plants', zone: 'mid' },
+      { type: 'plant', label: 'Background', zone: 'back' },
+      { type: 'filter', label: 'Filter', zone: 'back' },
+      { type: 'plant', label: 'Background', zone: 'back' },
+      { type: 'heater', label: 'Heater hide', zone: 'back' },
+    ],
+    monster: [
+      { type: 'sand', label: 'Open sand', zone: 'foreground' },
+      { type: 'open', label: 'Hunt lane', zone: 'open' },
+      { type: 'sand', label: 'Open sand', zone: 'foreground' },
+      { type: 'rock', label: 'Cave', zone: 'foreground' },
+      { type: 'rock', label: 'Cave', zone: 'mid' },
+      { type: 'fish', label: 'Centerpiece', zone: 'open' },
+      { type: 'rock', label: 'Slate', zone: 'mid' },
+      { type: 'open', label: 'Swim', zone: 'open' },
+      { type: 'rock', label: 'Backdrop', zone: 'back' },
+      { type: 'filter', label: 'Canister', zone: 'back' },
+      { type: 'heater', label: 'Heater', zone: 'back' },
+      { type: 'rock', label: 'Backdrop', zone: 'back' },
+    ],
+  };
+
+  const plants = localPlantRecommendations({
+    tankType: theme === 'planted' ? 'Planted' : tankType,
+    lighting,
+    co2: theme === 'planted' ? 'medium' : 'none',
+    temperature: params.temperature || 25,
+    ph: params.ph || 7,
+  }).slice(0, plantDensity === 'low' ? 2 : 4);
+
+  const fishType = theme === 'monster' ? 'Monster Fish' : theme === 'planted' ? 'Planted' : tankType;
+  const stocking = localFishRecommendations(fishType, {
+    ph: params.ph || 7,
+    temperature: params.temperature || 25,
+    ammonia: 0,
+  });
+
+  const stockingNotes = [
+    `Aim for about ${maxFish} fish in a ${volume}L ${theme} layout.`,
+    livestock === 'schooling'
+      ? 'Keep open swim space along the front so schools can turn.'
+      : livestock === 'predator'
+        ? 'Choose tank mates too large to swallow and use a secure lid.'
+        : 'Mix midwater fish with a small bottom-dwelling cleanup crew.',
+    plantDensity === 'high'
+      ? 'Plant densely in the back and keep a viewing path through the center.'
+      : plantDensity === 'low'
+        ? 'Use hardy plants only — monster fish will uproot delicate stems.'
+        : 'Balance hardscape and plants so filtration stays easy to hide.',
+  ];
+
+  return {
+    theme,
+    volumeLiters: volume,
+    plantDensity,
+    recommendedFishCount: maxFish,
+    zones,
+    hardscape,
+    plants,
+    stocking,
+    stockingNotes,
+    layoutSlots: slotMaps[theme],
+  };
+}
+
 module.exports = {
   FISH_PROFILES,
   PLANT_PROFILES,
@@ -332,4 +553,5 @@ module.exports = {
   localFishRecommendations,
   localPlantRecommendations,
   detailedWaterPredictions,
+  designTank,
 };

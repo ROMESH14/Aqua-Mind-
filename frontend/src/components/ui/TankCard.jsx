@@ -1,4 +1,4 @@
-function TankCard({ tank }) {
+function TankCard({ tank, onDelete }) {
   const bubbleStyle = tank.bubblePosition === 'left'
     ? { left: '20px', right: 'auto' }
     : undefined;
@@ -6,6 +6,20 @@ function TankCard({ tank }) {
   return (
     <div className="tank-card">
       <div className="tank-visual" style={{ background: tank.visualBg }}>
+        {onDelete && (
+          <button
+            type="button"
+            className="tank-delete"
+            aria-label={`Delete ${tank.name}`}
+            title="Delete tank"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(tank);
+            }}
+          >
+            −
+          </button>
+        )}
         <div className="tank-water" style={{ bottom: 0, left: 0, right: 0, height: `${tank.waterHeight}px` }}>
           <div className="tank-water-body" style={{ height: `${tank.waterHeight}px`, background: tank.waterBg }}>
             <div className="water-surface" />

@@ -12,5 +12,6 @@ router.get('/tanks/:tankId/plants', asyncHandler(aiController.getPlantAdvice));
 router.post('/analyze/fish', asyncHandler(aiController.analyzeFish));
 router.post('/analyze/water', asyncHandler(aiController.analyzeWater));
 router.post('/analyze/plants', asyncHandler(aiController.analyzePlants));
+router.post('/analyze/design', asyncHandler(aiController.analyzeDesign));
 
 module.exports = router;

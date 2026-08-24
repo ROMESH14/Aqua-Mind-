@@ -2,6 +2,7 @@ import api from './api';
 import {
   localFishRecommendations,
   localPlantRecommendations,
+  designTank,
 } from '../data/aiCatalog';
 
 function isBackendUnreachable(err) {
@@ -37,14 +38,19 @@ export const aiService = {
     })
   ),
   analyzeWater: (body) => api.post('/ai/analyze/water', body),
+  analyzeDesign: (body) => withOfflineFallback(
+    () => api.post('/ai/analyze/design', body),
+    () => designTank(body)
+  ),
   analyzePlants: (body) => withOfflineFallback(
     () => api.post('/ai/analyze/plants', body),
     () => ({
       plants: localPlantRecommendations(body),
+      design: designTank({ ...body, theme: body.style || body.theme }),
       source: 'expert',
       message: Number(body.temperature) > 30
-        ? 'Backend offline — high temperature hurts most plants. Cool the tank below 30°C. Start F5 → Aqua Mind (Full Stack) for full ML.'
-        : 'Backend offline — expert plant picks from your inputs. Start F5 → Aqua Mind (Full Stack).',
+        ? 'High temperature hurts most plants. Aim below 30°C. Backend offline — showing expert picks from your answers.'
+        : 'New-tank plant and layout ideas from your answers.',
     })
   ),
 };

@@ -6,6 +6,7 @@ import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
 import { tankService } from '../services/tankService';
 import { waterService } from '../services/waterService';
+import PageHero from '../components/ui/PageHero';
 
 function WaterQuality() {
   const [tanks, setTanks] = useState([]);
@@ -68,12 +69,7 @@ function WaterQuality() {
   return (
     <div className="page-screen">
       <div className="page">
-        <div className="page-header">
-          <div>
-            <div className="page-title">Water Quality</div>
-            <div className="page-subtitle">Monitor and log water parameters for all tanks</div>
-          </div>
-          <div className="page-header-actions">
+        <PageHero eyebrow="Chemistry" title="Water Quality" subtitle="Monitor and log water parameters for all tanks">
             {tanks.length > 0 && (
               <Select
                 variant="header"
@@ -87,8 +83,7 @@ function WaterQuality() {
               </Select>
             )}
             <button type="button" className="btn btn-primary" disabled={!tanks.length} onClick={() => setShowModal(true)}>＋ Log Parameters</button>
-          </div>
-        </div>
+        </PageHero>
 
         {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
 

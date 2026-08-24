@@ -6,6 +6,7 @@ import joblib
 import numpy as np
 
 from .features import get_feature_columns, readings_to_feature_row
+from .rules import recommend_fish_rules, recommend_plant_rules
 from .thresholds import evaluate_forecast, evaluate_reading
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -79,11 +80,13 @@ class ModelStore:
 
     @property
     def fish_ready(self):
-        return self.fish_bundle is not None
+        from .catalog import get_catalogs
+        return bool(get_catalogs()['fish'])
 
     @property
     def plant_ready(self):
-        return self.plant_bundle is not None
+        from .catalog import get_catalogs
+        return bool(get_catalogs()['plants'])
 
 
 store = ModelStore()
@@ -207,152 +210,11 @@ def predict_water_quality(readings):
     }, 200
 
 
-def _score_fish_candidate(bundle, species, tank_type, volume, ph, temp, ammonia):
-    """Score a single species candidate."""
-    import pandas as pd
-
-    row = pd.DataFrame([{
-        'species': species,
-        'tank_type': tank_type or 'Community',
-        'volume_liters': volume or 60,
-        'ph': ph or 7.0,
-        'temp': temp or 25,
-        'ammonia': ammonia or 0,
-    }])
-    cat = bundle['encoder'].transform(row[bundle['cat_cols']].astype(str))
-    num = row[bundle['num_cols']].astype(float).values
-    X = np.hstack([cat, num])
-
-    model = bundle['model']
-    le = bundle['label_encoder']
-
-    if species not in le.classes_:
-        # Unknown species — use average proba if multiclass
-        if hasattr(model, 'predict_proba'):
-            proba = model.predict_proba(X)[0]
-            return int(proba.max() * 100)
-        return 50
-
-    idx = list(le.classes_).index(species)
-    if hasattr(model, 'predict_proba'):
-        proba = model.predict_proba(X)[0]
-        return int(proba[idx] * 100) if idx < len(proba) else 50
-    pred = model.predict(X)[0]
-    return 95 if pred == idx else 40
-
-
 def recommend_fish(payload):
-    """POST /recommend/fish handler."""
-    store.load()
-
-    tank_type = payload.get('tankType') or payload.get('tank_type') or 'Community'
-    volume = payload.get('volumeLiters') or payload.get('volume_liters') or 60
-    ph = payload.get('ph') or payload.get('pH') or 7.0
-    temp = payload.get('temperature') or payload.get('temp') or 25
-    ammonia = payload.get('ammonia') or 0
-
-    warning = None
-    if tank_type == 'Monster Fish':
-        warning = 'Research species compatibility before adding new fish'
-
-    if not store.fish_ready:
-        recs = SPECIES_CATALOG.get(tank_type, SPECIES_CATALOG['Community'])
-        return {
-            'recommendations': recs,
-            'warning': warning,
-            'message': 'Fish model not trained — using catalog defaults',
-            'source': 'catalog',
-        }, 200
-
-    bundle = store.fish_bundle
-    catalog = bundle.get('catalog', SPECIES_CATALOG)
-    candidates = catalog.get(tank_type, catalog.get('Community', []))
-
-    scored = []
-    for item in candidates:
-        compat = _score_fish_candidate(
-            bundle, item['name'], tank_type, volume, ph, temp, ammonia
-        )
-        scored.append({
-            'emoji': item.get('emoji', '🐟'),
-            'name': item['name'],
-            'compat': compat,
-        })
-
-    scored.sort(key=lambda x: x['compat'], reverse=True)
-    return {
-        'recommendations': scored[:3],
-        'warning': warning,
-        'source': 'ml',
-    }, 200
-
-
-def _score_plant_candidate(bundle, plant_name, lighting, co2, ph, temp):
-    import pandas as pd
-
-    row = pd.DataFrame([{
-        'lighting': lighting or 'medium',
-        'co2': co2 or 'none',
-        'plant_name': plant_name,
-        'ph': ph or 7.0,
-        'temp': temp or 25,
-    }])
-    cat = bundle['encoder'].transform(row[bundle['cat_cols']].astype(str))
-    num = row[bundle['num_cols']].astype(float).values
-    X = np.hstack([cat, num])
-
-    model = bundle['model']
-    le = bundle['label_encoder']
-
-    if plant_name not in le.classes_:
-        if hasattr(model, 'predict_proba'):
-            return int(model.predict_proba(X)[0].max() * 100)
-        return 50
-
-    idx = list(le.classes_).index(plant_name)
-    if hasattr(model, 'predict_proba'):
-        proba = model.predict_proba(X)[0]
-        return int(proba[idx] * 100) if idx < len(proba) else 50
-    return 95 if model.predict(X)[0] == idx else 40
+    """POST /recommend/fish handler — Excel range rules."""
+    return recommend_fish_rules(payload), 200
 
 
 def recommend_plants(payload):
-    """POST /recommend/plants handler."""
-    store.load()
-
-    tank_type = payload.get('tankType') or 'Community'
-    lighting = payload.get('lighting') or _default_lighting(tank_type)
-    co2 = payload.get('co2') or _default_co2(tank_type)
-    ph = payload.get('ph') or payload.get('pH') or 7.0
-    temp = payload.get('temperature') or payload.get('temp') or 25
-
-    if not store.plant_ready:
-        return {
-            'plants': PLANT_CATALOG,
-            'message': 'Plant model not trained — using catalog defaults',
-            'source': 'catalog',
-        }, 200
-
-    bundle = store.plant_bundle
-    catalog = bundle.get('catalog', PLANT_CATALOG)
-
-    scored = []
-    for item in catalog:
-        pct = _score_plant_candidate(bundle, item['name'], lighting, co2, ph, temp)
-        scored.append({
-            'emoji': item.get('emoji', '🌱'),
-            'name': item['name'],
-            'match': f'{pct}% match',
-            'detail': item.get('detail', ''),
-        })
-
-    scored.sort(key=lambda x: int(x['match'].split('%')[0]), reverse=True)
-    return {'plants': scored[:4], 'source': 'ml'}, 200
-
-
-def _default_lighting(tank_type):
-    return {'Planted': 'high', 'Community': 'medium'}.get(tank_type, 'low')
-
-
-def _default_co2(tank_type):
-    return {'Planted': 'medium', 'Community': 'none'}.get(tank_type, 'none')
+    """POST /recommend/plants handler — Excel range rules."""
+    return recommend_plant_rules(payload), 200

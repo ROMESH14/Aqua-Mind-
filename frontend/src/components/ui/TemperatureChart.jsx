@@ -37,8 +37,8 @@ function TemperatureChart({ trends = [] }) {
       <svg className="chart-svg" viewBox="0 0 700 160" preserveAspectRatio="none">
         <defs>
           <linearGradient id="aquaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(45,212,191,0.35)" />
-            <stop offset="100%" stopColor="rgba(45,212,191,0)" />
+            <stop offset="0%" stopColor="rgba(14,165,164,0.35)" />
+            <stop offset="100%" stopColor="rgba(56,189,248,0)" />
           </linearGradient>
         </defs>
         <line x1="0" y1="30" x2="700" y2="30" className="chart-grid" strokeDasharray="4 4" />

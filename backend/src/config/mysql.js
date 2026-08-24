@@ -110,6 +110,42 @@ async function ensureSchema(db) {
       FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
       FOREIGN KEY (TankID) REFERENCES Tanks(TankID) ON DELETE SET NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS GrowthRecords (
+      GrowthID INT AUTO_INCREMENT PRIMARY KEY,
+      UserID INT NOT NULL,
+      TankID INT NOT NULL,
+      FishName VARCHAR(255) NOT NULL,
+      LengthCm DECIMAL(6,2) NOT NULL,
+      WeightG DECIMAL(8,2) NULL,
+      Notes TEXT NULL,
+      RecordedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+      FOREIGN KEY (TankID) REFERENCES Tanks(TankID) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS Equipment (
+      EquipmentID INT AUTO_INCREMENT PRIMARY KEY,
+      UserID INT NOT NULL,
+      TankID INT NULL,
+      Name VARCHAR(255) NOT NULL,
+      Type VARCHAR(50) NOT NULL,
+      Brand VARCHAR(255) NULL,
+      Status VARCHAR(50) NOT NULL DEFAULT 'Working',
+      Notes TEXT NULL,
+      CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+      FOREIGN KEY (TankID) REFERENCES Tanks(TankID) ON DELETE SET NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS SavedPlans (
+      PlanID INT AUTO_INCREMENT PRIMARY KEY,
+      UserID INT NOT NULL,
+      Kind VARCHAR(40) NOT NULL DEFAULT 'plants',
+      Title VARCHAR(255) NOT NULL,
+      SearchText TEXT NULL,
+      FormJSON LONGTEXT NOT NULL,
+      ResultJSON LONGTEXT NOT NULL,
+      CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+    )`,
   ];
 
   for (const sql of statements) {

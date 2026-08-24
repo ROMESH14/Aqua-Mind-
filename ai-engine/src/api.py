@@ -1,8 +1,9 @@
 """Flask API routes for AquaMind ML engine."""
 
-from flask import Flask, jsonify, request
+from flask import Flask, abort, jsonify, request, send_from_directory
 from flask_cors import CORS
 
+from .catalog import fish_image_root, plant_image_root
 from .inference import (
     predict_water_quality,
     recommend_fish,
@@ -78,3 +79,25 @@ def legacy_plants():
     body = {'tankType': tank_type}
     result, status = recommend_plants(body)
     return jsonify(result), status
+
+
+def _safe_media(root, folder, filename):
+    if not folder or not filename or '..' in folder or '..' in filename:
+        abort(404)
+    directory = root / folder
+    if not directory.is_dir():
+        abort(404)
+    path = directory / filename
+    if not path.is_file():
+        abort(404)
+    return send_from_directory(directory, filename)
+
+
+@app.route('/media/fish/<folder>/<filename>')
+def media_fish(folder, filename):
+    return _safe_media(fish_image_root(), folder, filename)
+
+
+@app.route('/media/plant/<folder>/<filename>')
+def media_plant(folder, filename):
+    return _safe_media(plant_image_root(), folder, filename)

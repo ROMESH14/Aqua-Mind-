@@ -1,6 +1,6 @@
 # AquaMind AI/ML Engine
 
-Python ML layer for water quality forecasting, fish recommendations, and plant suggestions.
+Python ML layer for water quality forecasting, plus rule-based fish and plant recommendations from the AquaMind Excel catalogs.
 
 ## Prerequisites
 
@@ -45,31 +45,24 @@ python scripts/export_data.py
 
 Required columns: `ReadingID, TankID, pH, Temperature, Ammonia, Nitrite, Nitrate, DissolvedO2, RecordedAt`
 
-### 3. Prepare label files
+### 3. Fish and plant catalogs (no training)
 
-Copy templates and edit with your species/plant knowledge:
+Recommendations use range-matching rules on:
 
-```bash
-copy data\fish_labels.csv.template data\fish_labels.csv
-copy data\plant_labels.csv.template data\plant_labels.csv
-```
+- `Fish - DataSet/AquaMind_Complete_Dataset.xlsx` + `fish_images/`
+- `Plant - DataSet/AquaMind_Plant_Dataset_with_images.xlsx` + `plant/`
 
-| File | Columns |
-|------|---------|
-| `fish_labels.csv` | species, tank_type, volume_liters, ph, temp, ammonia, compatible |
-| `plant_labels.csv` | lighting, co2, ph, temp, plant_name, suitable |
+Photos are served at `http://localhost:5001/media/fish/<folder>/<file>` and `/media/plant/<folder>/<file>`.
 
-### 4. Train models
+Optional ML label CSVs (`train_fish.py` / `train_plants.py`) are unused by the recommend endpoints.
+
+### 4. Train water models
 
 ```bash
 # Water quality (needs 20+ readings)
 python scripts/train_water.py
 
-# Fish and plants (need label CSVs with 5+ rows)
-python scripts/train_fish.py
-python scripts/train_plants.py
-
-# Or all at once (optional --export to pull from MySQL first)
+# Or export + train water (optional --export to pull from MySQL first)
 python scripts/retrain_all.py --export
 ```
 
@@ -88,9 +81,11 @@ Verify: http://localhost:5001/api/health
 | Method | Path | Body |
 |--------|------|------|
 | POST | `/predict/water-quality` | `{ "readings": [...] }` |
-| POST | `/recommend/fish` | `{ volumeLiters, tankType, ph, temperature, ammonia, ... }` |
-| POST | `/recommend/plants` | `{ tankType, lighting, co2, ph, temperature }` |
-| GET | `/api/health` | Model load status |
+| POST | `/recommend/fish` | `{ volumeLiters, tankType, ph, temperature, ammonia, ... }` — Excel rules, includes `image` |
+| POST | `/recommend/plants` | `{ tankType, lighting, co2, ph, temperature }` — Excel rules, includes `image` |
+| GET | `/media/fish/<folder>/<file>` | Dataset fish photo |
+| GET | `/media/plant/<folder>/<file>` | Dataset plant photo |
+| GET | `/api/health` | Water model + catalog status |
 
 Legacy GET routes (`/api/species`, `/api/plants`) remain for offline fallbacks.
 
@@ -103,7 +98,7 @@ Legacy GET routes (`/api/species`, `/api/plants`) remain for offline fallbacks.
 
 **Fish:**
 ```json
-{ "recommendations": [{ "name": "Neon Tetra", "compat": 95, "emoji": "🐠" }] }
+{ "recommendations": [{ "name": "Neon Tetra", "compat": 95, "image": "http://localhost:5001/media/fish/Neon_Tetra/img_1.jpg", "source": "rules" }] }
 ```
 
 **Plants:**

@@ -75,6 +75,40 @@ db.exec(`
     IsRead INTEGER NOT NULL DEFAULT 0,
     CreatedAt TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS GrowthRecords (
+    GrowthID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL REFERENCES Users(UserID) ON DELETE CASCADE,
+    TankID INTEGER NOT NULL REFERENCES Tanks(TankID) ON DELETE CASCADE,
+    FishName TEXT NOT NULL,
+    LengthCm REAL NOT NULL,
+    WeightG REAL,
+    Notes TEXT,
+    RecordedAt TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS Equipment (
+    EquipmentID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL REFERENCES Users(UserID) ON DELETE CASCADE,
+    TankID INTEGER REFERENCES Tanks(TankID) ON DELETE SET NULL,
+    Name TEXT NOT NULL,
+    Type TEXT NOT NULL,
+    Brand TEXT,
+    Status TEXT NOT NULL DEFAULT 'Working',
+    Notes TEXT,
+    CreatedAt TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS SavedPlans (
+    PlanID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER NOT NULL REFERENCES Users(UserID) ON DELETE CASCADE,
+    Kind TEXT NOT NULL DEFAULT 'plants',
+    Title TEXT NOT NULL,
+    SearchText TEXT,
+    FormJSON TEXT NOT NULL,
+    ResultJSON TEXT NOT NULL,
+    CreatedAt TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 module.exports = db;

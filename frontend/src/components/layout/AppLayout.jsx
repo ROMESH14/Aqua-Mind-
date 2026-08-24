@@ -1,12 +1,19 @@
 import { Outlet } from 'react-router-dom';
-import Navbar from './Navbar';
+import Sidebar from './Sidebar';
+import AppTopbar from './AppTopbar';
 
 function AppLayout() {
   return (
-    <>
-      <Navbar />
-      <Outlet />
-    </>
+    <div className="app-shell">
+      <div className="water-bubbles" aria-hidden="true">
+        <span /><span /><span /><span /><span />
+      </div>
+      <Sidebar />
+      <main className="app-canvas">
+        <AppTopbar />
+        <Outlet />
+      </main>
+    </div>
   );
 }
 

@@ -41,12 +41,12 @@ async function getDashboard(req, res) {
     {
       variant: 'accent', icon: '🐠', value: String(tankCount), label: 'Active Tanks',
       change: tankCount > 0 ? 'Tracking' : '—', changeType: 'up',
-      valueColor: tankCount > 0 ? 'var(--aqua-light)' : 'var(--text-muted)',
+      valueColor: tankCount > 0 ? 'var(--aqua-dark)' : 'var(--text-muted)',
     },
     {
       variant: 'light', icon: '🐟', value: String(totalFish), label: 'Total Fish',
       change: totalFish > 0 ? 'Across tanks' : '—', changeType: 'up',
-      valueColor: totalFish > 0 ? 'var(--cyan)' : 'var(--text-muted)',
+      valueColor: totalFish > 0 ? '#0891b2' : 'var(--text-muted)',
     },
     {
       variant: 'warn', icon: '⚗️',

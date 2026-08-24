@@ -5,11 +5,14 @@ import Modal from '../components/ui/Modal';
 import Select from '../components/ui/Select';
 import { tankService } from '../services/tankService';
 import { mapTankForCard } from '../utils/tankMapper';
+import PageHero from '../components/ui/PageHero';
 
 function Tanks() {
   const [tanks, setTanks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', volumeLiters: '', tankType: '', fishCount: 0, plantCount: 0 });
 
@@ -21,6 +24,22 @@ function Tanks() {
   };
 
   useEffect(() => { loadTanks(); }, []);
+
+  const handleDelete = (tank) => setPendingDelete(tank);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await tankService.remove(pendingDelete.id);
+      setPendingDelete(null);
+      loadTanks();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -43,13 +62,9 @@ function Tanks() {
   return (
     <div className="page-screen">
       <div className="page">
-        <div className="page-header">
-          <div>
-            <div className="page-title">My Tanks</div>
-            <div className="page-subtitle">Manage and monitor all your aquariums</div>
-          </div>
+        <PageHero eyebrow="Collection" title="My Tanks" subtitle="Manage and monitor all your aquariums">
           <button type="button" className="btn btn-primary" onClick={() => setShowModal(true)}>＋ New Tank</button>
-        </div>
+        </PageHero>
 
         {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
 
@@ -62,7 +77,7 @@ function Tanks() {
         ) : (
           <div className="tanks-grid">
             {tanks.map((tank, i) => (
-              <TankCard key={tank.id} tank={mapTankForCard(tank, i)} />
+              <TankCard key={tank.id} tank={mapTankForCard(tank, i)} onDelete={handleDelete} />
             ))}
           </div>
         )}
@@ -100,6 +115,25 @@ function Tanks() {
               </div>
               <button type="submit" className="auth-btn">Create Tank</button>
             </form>
+          </Modal>
+        )}
+
+        {pendingDelete && (
+          <Modal title="Delete tank" onClose={() => !deleting && setPendingDelete(null)}>
+            <div className="confirm-body">
+              <p className="confirm-text">
+                Remove <strong>{pendingDelete.name}</strong> from your collection?
+              </p>
+              <p className="confirm-hint">Water logs and growth records for this tank will also be removed. This cannot be undone.</p>
+              <div className="confirm-actions">
+                <button type="button" className="btn btn-ghost" disabled={deleting} onClick={() => setPendingDelete(null)}>
+                  Keep tank
+                </button>
+                <button type="button" className="btn btn-danger" disabled={deleting} onClick={confirmDelete}>
+                  {deleting ? 'Deleting...' : 'Yes, delete'}
+                </button>
+              </div>
+            </div>
           </Modal>
         )}
       </div>

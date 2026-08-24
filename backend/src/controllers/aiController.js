@@ -7,6 +7,7 @@ const {
   localFishRecommendations,
   localPlantRecommendations,
   detailedWaterPredictions,
+  designTank,
 } = require('../data/aiCatalog');
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://localhost:5001';
@@ -357,6 +358,16 @@ async function analyzeWater(req, res) {
 
 async function analyzePlants(req, res) {
   const { tankType, lighting, co2, ph, temperature } = req.body;
+  const design = designTank({
+    tankType: tankType || 'Planted',
+    volumeLiters: req.body.volumeLiters,
+    theme: req.body.style || req.body.theme || tankType,
+    lighting: lighting || 'medium',
+    livestock: req.body.livestock,
+    hardscape: req.body.hardscape,
+    ph,
+    temperature,
+  });
 
   const aiResult = await postAI('/recommend/plants', {
     tankType: tankType || 'Planted',
@@ -364,6 +375,12 @@ async function analyzePlants(req, res) {
     co2: co2 || 'none',
     ph: ph != null && ph !== '' ? Number(ph) : 7.0,
     temperature: temperature != null && temperature !== '' ? Number(temperature) : 25,
+    volumeLiters: req.body.volumeLiters,
+    style: req.body.style,
+    experience: req.body.experience,
+    substrate: req.body.substrate,
+    maintenance: req.body.maintenance,
+    livestock: req.body.livestock,
   });
 
   const aiData = aiResult.ok ? aiResult.data : null;
@@ -374,8 +391,9 @@ async function analyzePlants(req, res) {
       : localPlantRecommendations(req.body);
     return res.json({
       plants,
+      design,
       source: fallback?.plants?.length ? 'catalog' : 'expert',
-      message: fallback ? 'AI engine offline — using catalog defaults' : 'Expert plant picks for your setup',
+      message: fallback ? 'AI engine offline — using catalog defaults' : 'New-tank plant and layout ideas from your answers',
     });
   }
 
@@ -385,8 +403,27 @@ async function analyzePlants(req, res) {
         ? aiData.plants
         : localPlantRecommendations(req.body)
     ),
+    design,
     source: aiData.source || 'ml',
-    message: aiData.message || null,
+    message: aiData.message || 'New-tank plant and layout ideas from your answers',
+  });
+}
+
+async function analyzeDesign(req, res) {
+  const design = designTank({
+    tankType: req.body.tankType || 'Community',
+    volumeLiters: req.body.volumeLiters,
+    theme: req.body.theme,
+    lighting: req.body.lighting,
+    livestock: req.body.livestock,
+    ph: req.body.ph,
+    temperature: req.body.temperature,
+  });
+
+  res.json({
+    ...design,
+    source: 'expert',
+    message: 'Rule-based layout plan from tank size, theme, and lighting',
   });
 }
 
@@ -397,4 +434,5 @@ module.exports = {
   analyzeFish,
   analyzeWater,
   analyzePlants,
+  analyzeDesign,
 };

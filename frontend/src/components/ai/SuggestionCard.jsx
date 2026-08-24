@@ -44,8 +44,11 @@ export function FishSuggestionCard({ item }) {
         <p className="suggestion-desc">{item.description}</p>
         {item.care && <p className="suggestion-care"><strong>Care:</strong> {item.care}</p>}
         <IdealParams ideal={item.ideal} />
-        <div className="compat-bar suggestion-bar">
-          <div className="compat-fill" style={{ width: `${item.compat}%` }} />
+        <div className="suggestion-match">
+          <div className="compat-bar suggestion-bar" aria-hidden="true">
+            <div className="compat-fill" style={{ width: `${item.compat}%` }} />
+          </div>
+          <span className="suggestion-match-pct">{item.compat}%</span>
         </div>
       </div>
     </article>
@@ -66,8 +69,11 @@ export function PlantSuggestionCard({ item }) {
         <p className="suggestion-desc">{item.description}</p>
         {item.care && <p className="suggestion-care"><strong>Care:</strong> {item.care}</p>}
         <IdealParams ideal={item.ideal} />
-        <div className="compat-bar suggestion-bar">
-          <div className="compat-fill" style={{ width: `${pct}%` }} />
+        <div className="suggestion-match">
+          <div className="compat-bar suggestion-bar" aria-label={`${pct} percent match`}>
+            <div className="compat-fill" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="suggestion-match-pct">{pct}%</span>
         </div>
       </div>
     </article>

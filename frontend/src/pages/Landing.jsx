@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import AuthModal from '../components/auth/AuthModal';
 import Logo from '../components/ui/Logo';
+import { useAuth } from '../context/AuthContext';
 
 const NAV_SECTIONS = [
   { id: 'features', label: 'Features' },
@@ -16,6 +18,12 @@ const features = [
     title: 'Dashboard',
     desc: 'Stats, alerts & temperature trends at a glance.',
     image: 'deck-tank.png',
+  },
+  {
+    icon: '✦',
+    title: 'Planner',
+    desc: 'Plant and species recommendations for your tank.',
+    image: 'deck-betta.png',
   },
   {
     icon: '◎',
@@ -34,12 +42,6 @@ const features = [
     title: 'Maintenance',
     desc: 'Schedule water changes & never miss a task.',
     image: 'deck-plants.png',
-  },
-  {
-    icon: '✦',
-    title: 'AI Advisor',
-    desc: 'Species tips & water quality predictions.',
-    image: 'deck-betta.png',
   },
 ];
 
@@ -114,9 +116,34 @@ function getDeckCardStyle(index, activeIndex) {
 
 function Landing() {
   const img = (file) => `${process.env.PUBLIC_URL}/${file}`;
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeCard, setActiveCard] = useState(DEFAULT_DECK_INDEX);
   const [activeSection, setActiveSection] = useState('');
   const scrollPadRef = useRef(null);
+  const authParam = searchParams.get('auth');
+  const authMode = authParam === 'register' ? 'register' : authParam === 'login' ? 'login' : null;
+
+  const openAuth = (mode) => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+      return;
+    }
+    setSearchParams({ auth: mode }, { replace: true });
+  };
+
+  const closeAuth = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('auth');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (isAuthenticated && authMode) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, authMode, navigate]);
 
   const updateScrollPad = useCallback(() => {
     const lastId = NAV_SECTIONS[NAV_SECTIONS.length - 1].id;
@@ -201,11 +228,13 @@ function Landing() {
             ))}
           </nav>
           <div className="lp-header-actions">
-            <Link to="/login" className="lp-btn lp-btn--ghost lp-btn--nav">Sign in</Link>
-            <Link to="/login" className="lp-btn lp-btn--primary lp-btn--nav">
+            <button type="button" className="lp-btn lp-btn--ghost lp-btn--nav" onClick={() => openAuth('login')}>
+              Sign in
+            </button>
+            <button type="button" className="lp-btn lp-btn--primary lp-btn--nav" onClick={() => openAuth('register')}>
               Get started
               <span className="lp-btn-arrow" aria-hidden="true">→</span>
-            </Link>
+            </button>
           </div>
         </div>
       </header>
@@ -217,13 +246,16 @@ function Landing() {
               <span className="lp-eyebrow">AI-powered aquarium care</span>
               <h1 className="lp-hero-title">
                 Smarter care for every{' '}
-                <span className="lp-hero-highlight">aquarium you keep.</span>
+                <span className="lp-hero-highlight">aquarium</span>{' '}
+                <span className="lp-hero-highlight-alt">you keep.</span>
               </h1>
               <p className="lp-hero-sub">
                 Track water quality, manage tanks and fish, schedule maintenance, and get AI species advice — all in Aqua Mind.
               </p>
               <div className="lp-hero-cta">
-                <Link to="/login" className="lp-btn lp-btn--primary lp-btn--lg">Get started free</Link>
+                <button type="button" className="lp-btn lp-btn--primary lp-btn--lg" onClick={() => openAuth('register')}>
+                  Get started free
+                </button>
                 <span className="lp-hero-note">No credit card required</span>
               </div>
             </div>
@@ -333,7 +365,9 @@ function Landing() {
           <div className="lp-container">
             <div className="lp-banner-inner">
               <h2>Ready to dive in?</h2>
-              <Link to="/login" className="lp-btn lp-btn--primary lp-btn--lg">Create free account</Link>
+              <button type="button" className="lp-btn lp-btn--primary lp-btn--lg" onClick={() => openAuth('register')}>
+                Create free account
+              </button>
             </div>
           </div>
         </section>
@@ -355,12 +389,19 @@ function Landing() {
                 {label}
               </a>
             ))}
-            <Link to="/login">Get started</Link>
+            <button type="button" className="lp-footer-link" onClick={() => openAuth('register')}>Get started</button>
           </nav>
           <small className="lp-footer-copy">© {new Date().getFullYear()} Aqua Mind</small>
         </div>
       </footer>
       <div ref={scrollPadRef} className="lp-scroll-pad" aria-hidden="true" />
+      {authMode && (
+        <AuthModal
+          mode={authMode}
+          onClose={closeAuth}
+          onModeChange={(mode) => setSearchParams({ auth: mode }, { replace: true })}
+        />
+      )}
     </div>
   );
 }
