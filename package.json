@@ -9,6 +9,7 @@
     "start:frontend": "npm start --prefix frontend",
     "start:backend": "npm run dev --prefix backend",
     "start:ai": "py ai-engine/app.py",
-    "build": "npm run build --prefix frontend"
+    "build": "npm run build --prefix frontend",
+    "sync-gallery": "node scripts/sync-species-gallery.js"
   }
 }

@@ -30,6 +30,12 @@ SPECIES_CATALOG = {
         {'emoji': '🐟', 'name': 'Silver Dollar', 'compat': 92},
         {'emoji': '🐡', 'name': 'Bichir', 'compat': 85},
         {'emoji': '🦈', 'name': 'Bala Shark', 'compat': 78},
+        {'emoji': '🐟', 'name': 'Oscar', 'compat': 88},
+        {'emoji': '🐟', 'name': 'Jaguar Cichlid', 'compat': 86},
+        {'emoji': '🐟', 'name': 'Jack Dempsey', 'compat': 84},
+        {'emoji': '🐟', 'name': 'Flowerhorn Cichlid', 'compat': 83},
+        {'emoji': '🐟', 'name': 'Green Terror', 'compat': 82},
+        {'emoji': '🐟', 'name': 'Silver Arowana', 'compat': 80},
     ],
 }
 

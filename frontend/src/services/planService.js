@@ -43,8 +43,12 @@ export const planService = {
         title: payload.title,
         searchText: [
           payload.title,
+          payload.form?.tankStyle,
+          payload.form?.tankShape,
+          payload.form?.theme,
           ...(payload.result?.plants || []).map((p) => p.name),
           ...(payload.result?.recommendations || []).map((p) => p.name),
+          ...(payload.result?.stocking || []).map((p) => p.name),
         ].join(' '),
         form: payload.form,
         result: payload.result,

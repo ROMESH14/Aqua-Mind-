@@ -42,7 +42,52 @@ def _tank_type_penalty(tank_type, temperament):
     return 0
 
 
-def score_fish(row, volume, ph, temp, ammonia, nitrite, nitrate, tank_type):
+def _name_requirement_bonus(name, volume, tank_type, payload):
+    text = (name or '').lower()
+    livestock = str(payload.get('livestock') or payload.get('temperament') or '').lower()
+    experience = str(payload.get('experience') or 'beginner').lower()
+    theme = str(payload.get('theme') or payload.get('style') or '').lower()
+    planted = payload.get('planted') is True or 'plant' in (tank_type or '').lower() or 'plant' in theme or 'nature' in theme
+    monster = 'monster' in (tank_type or '').lower() or 'monster' in theme or 'predator' in livestock
+    shrimp = any(w in text for w in SHRIMP_WORDS)
+    school = any(w in text for w in ('tetra', 'rasbora', 'danio', 'barb', 'guppy', 'endler', 'minnow', 'rainbow'))
+    beginner = any(w in text for w in ('guppy', 'platy', 'molly', 'neon', 'zebra', 'cherry shrimp', 'amano', 'cory', 'white cloud'))
+    predator = any(w in text for w in ('oscar', 'jaguar', 'arowana', 'datnoid', 'stingray', 'bichir', 'knife', 'eel', 'shark', 'pacu'))
+    nano = any(w in text for w in ('ember', 'chili', 'celestial', 'shrimp', 'endler', 'otocinclus'))
+    large = any(w in text for w in ('arowana', 'stingray', 'pacu', 'oscar', 'jaguar', 'flowerhorn', 'datnoid', 'iridescent'))
+    planted_ok = any(w in text for w in ('oto', 'shrimp', 'rasbora', 'ember', 'cardinal', 'neon', 'ram', 'gourami', 'betta', 'celestial', 'cory'))
+    bonus = 0
+    vol = volume or 60
+    if vol < 40 and nano:
+        bonus += 12
+    if vol < 200 and any(w in text for w in ('arowana', 'stingray', 'pacu', 'iridescent')):
+        bonus -= 16
+    if planted and planted_ok:
+        bonus += 10
+    if planted and predator:
+        bonus -= 14
+    if monster and predator:
+        bonus += 10
+    if monster and (shrimp or nano):
+        bonus -= 22
+    if 'school' in livestock and school:
+        bonus += 10
+    if 'school' in livestock and predator:
+        bonus -= 16
+    if 'predator' in livestock and predator:
+        bonus += 12
+    if 'mixed' in livestock and not predator:
+        bonus += 5
+    if experience == 'beginner' and beginner:
+        bonus += 10
+    if experience == 'beginner' and predator:
+        bonus -= 14
+    if experience == 'advanced' and (large or predator):
+        bonus += 5
+    return bonus
+
+
+def score_fish(row, volume, ph, temp, ammonia, nitrite, nitrate, tank_type, payload=None):
     score = 100
     reasons = []
 
@@ -75,10 +120,60 @@ def score_fish(row, volume, ph, temp, ammonia, nitrite, nitrate, tank_type):
         score -= type_pen
         reasons.append('temperament vs tank type')
 
+    extra = _name_requirement_bonus(row.get('name'), volume, tank_type, payload or {})
+    score += extra
+    if extra >= 8:
+        reasons.append('strong match for tank size and setup')
+    elif extra <= -10:
+        reasons.append('weaker match for these requirements')
+
     return _clamp(score), reasons
 
 
-def score_plant(row, ph, temp, lighting, co2, tank_type):
+def _fish_names_from_payload(payload):
+    payload = payload or {}
+    names = payload.get('stockingNames') or []
+    if not names and payload.get('stocking'):
+        names = [
+            item.get('name') if isinstance(item, dict) else item
+            for item in payload.get('stocking') or []
+        ]
+    return [str(name) for name in names if name]
+
+
+def _plant_vs_fish_delta(plant_name, fish_names, tank_type):
+    text = ' '.join(fish_names or []).lower()
+    name = (plant_name or '').lower()
+    kind = (tank_type or '').lower()
+    hardy = any(word in name for word in ('java fern', 'anubias', 'java moss'))
+    delicate = 'rotala' in name
+    rooted = any(word in name for word in ('amazon sword', 'vallisneria', 'cryptocoryne'))
+    nipped = any(word in name for word in ('hornwort', 'rotala', 'vallisneria', 'amazon sword'))
+    eaters = any(word in text for word in (
+        'silver dollar', 'goldfish', 'pacu', 'tinfoil', 'flowerhorn', 'oscar',
+        'giant gourami', 'kissing gourami',
+    ))
+    uprooters = any(word in text for word in (
+        'cichlid', 'oscar', 'flowerhorn', 'convict', 'dempsey', 'jaguar', 'terror', 'frontosa',
+    ))
+    delta = 0
+    if 'monster' in kind or eaters:
+        if delicate:
+            delta -= 30
+        if hardy:
+            delta += 12
+        if nipped and not hardy:
+            delta -= 14
+    if eaters and delicate:
+        delta -= 10
+    if uprooters and rooted:
+        delta -= 16
+    if uprooters and hardy:
+        delta += 8
+    return delta
+
+
+def score_plant(row, ph, temp, lighting, co2, tank_type, payload=None):
     score = 100
     reasons = []
 
@@ -108,14 +203,56 @@ def score_plant(row, ph, temp, lighting, co2, tank_type):
         score -= 6
 
     kind = (tank_type or '').lower()
-    if kind == 'monster fish':
+    extra = _plant_vs_fish_delta(row.get('name'), _fish_names_from_payload(payload), tank_type)
+    score += extra
+    if extra <= -12:
+        reasons.append('not safe with the suggested fish')
+    elif extra >= 8:
+        reasons.append('hardy enough for the suggested fish')
+    elif kind == 'monster fish':
         score -= 8
         reasons.append('large fish may uproot plants')
 
     return _clamp(score), reasons
 
 
-def recommend_fish_rules(payload, limit=6):
+MONSTER_WORDS = (
+    'oscar', 'arowana', 'bichir', 'shark', 'jaguar', 'dempsey', 'flowerhorn', 'terror',
+    'knifefish', 'frontosa', 'stingray', 'pacu', 'datnoid', 'shovelnose', 'redtail',
+    'fire eel', 'ropefish', 'giant gourami', 'tinfoil', 'bala', 'convict', 'jewel',
+    'blood parrot', 'silver dollar', 'iridescent', 'elephant nose', 'firemouth',
+    'peacock cichlid', 'rainbow cichlid',
+)
+SHRIMP_WORDS = ('shrimp', 'prawn')
+
+
+def _is_monster_name(name):
+    text = (name or '').lower()
+    return any(word in text for word in MONSTER_WORDS)
+
+
+def _is_shrimp_name(name):
+    text = (name or '').lower()
+    return any(word in text for word in SHRIMP_WORDS)
+
+
+def _pick_top_stocking(scored, volume, limit=4):
+    min_fish = 1 if (volume or 60) < 3 else 2
+    fish = [item for item in scored if not _is_shrimp_name(item.get('name'))]
+    picked = []
+    for item in fish:
+        if len(picked) >= min_fish:
+            break
+        picked.append(item)
+    for item in scored:
+        if len(picked) >= limit:
+            break
+        if item not in picked:
+            picked.append(item)
+    return picked[:limit]
+
+
+def recommend_fish_rules(payload, limit=4):
     catalogs = get_catalogs()
     tank_type = payload.get('tankType') or payload.get('tank_type') or 'Community'
     volume = _as_float(payload.get('volumeLiters') or payload.get('volume_liters'), 60)
@@ -124,10 +261,16 @@ def recommend_fish_rules(payload, limit=6):
     ammonia = _as_float(payload.get('ammonia'), 0)
     nitrite = _as_float(payload.get('nitrite'), 0)
     nitrate = _as_float(payload.get('nitrate'), 10)
+    kind = (tank_type or '').lower()
 
     scored = []
     for row in catalogs['fish']:
-        compat, reasons = score_fish(row, volume, ph, temp, ammonia, nitrite, nitrate, tank_type)
+        name = row.get('name') or ''
+        if 'monster' in kind and not _is_monster_name(name):
+            continue
+        if 'monster' not in kind and _is_monster_name(name) and not _is_shrimp_name(name):
+            continue
+        compat, reasons = score_fish(row, volume, ph, temp, ammonia, nitrite, nitrate, tank_type, payload)
         image = media_url('fish', row.get('folder'), row.get('image_rel'))
         scored.append({
             'emoji': '🐟',
@@ -152,7 +295,7 @@ def recommend_fish_rules(payload, limit=6):
     source = 'rules'
     message = None if catalogs['fish_from_xlsx'] else 'Excel catalog missing — using built-in fallback species'
     return {
-        'recommendations': scored[:limit],
+        'recommendations': _pick_top_stocking(scored, volume, limit),
         'warning': warning,
         'source': source,
         'message': message,
@@ -169,7 +312,7 @@ def recommend_plant_rules(payload, limit=6):
 
     scored = []
     for row in catalogs['plants']:
-        pct, reasons = score_plant(row, ph, temp, lighting, co2, tank_type)
+        pct, reasons = score_plant(row, ph, temp, lighting, co2, tank_type, payload)
         image = media_url('plant', row.get('folder'), row.get('image_rel'))
         scored.append({
             'emoji': '🌱',

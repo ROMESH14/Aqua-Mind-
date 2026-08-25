@@ -41,11 +41,16 @@ async function create(req, res) {
   const names = [
     ...(result.plants || []).map((p) => p.name),
     ...(result.recommendations || []).map((p) => p.name),
+    ...(result.stocking || []).map((p) => p.name),
+    ...(result.shoppingList || []).map((p) => p.name),
   ].join(' ');
   const searchText = [
     title,
     form.tankType,
     form.style,
+    form.theme,
+    form.tankStyle,
+    form.tankShape,
     form.lighting,
     names,
   ].filter(Boolean).join(' ');

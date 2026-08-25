@@ -26,12 +26,13 @@ function formatAlert(alert) {
 async function getDashboard(req, res) {
   const userId = req.user.id;
 
-  const [tankCount, totalFish, avgPH, tasksDue, overdueCount, alerts, tasks, tempTrend] = await Promise.all([
+  const [tankCount, totalFish, avgPH, tasksDue, overdueCount, taskCount, alerts, tasks, tempTrend] = await Promise.all([
     tankModel.countByUser(userId),
     tankModel.totalFishByUser(userId),
     waterModel.getAvgPHByUser(userId),
     maintenanceModel.countDueToday(userId),
     maintenanceModel.countOverdue(userId),
+    maintenanceModel.countOpen(userId),
     alertModel.getByUser(userId, 10),
     maintenanceModel.getTasksByUser(userId, 'dashboard'),
     waterModel.getTemperatureTrend(userId, 7),
@@ -95,6 +96,7 @@ async function getDashboard(req, res) {
 
   res.json({
     stats,
+    taskCount,
     alerts: alerts.map(formatAlert),
     tasks: formattedTasks,
     temperatureTrend: Object.values(tanks),

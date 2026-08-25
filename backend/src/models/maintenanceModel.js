@@ -105,6 +105,20 @@ async function countDueToday(userId) {
   return result.recordset[0].count;
 }
 
+async function countOpen(userId) {
+  const conn = await getPool();
+  if (isSqlite(conn)) {
+    return conn.db.prepare(`SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = ? AND IsCompleted = 0`).get(userId).count;
+  }
+  if (isMysql(conn)) {
+    const row = await queryOne(conn, `SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = ? AND IsCompleted = 0`, [userId]);
+    return row?.count || 0;
+  }
+  const result = await conn.pool.request().input('userId', conn.sql.Int, userId)
+    .query(`SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = @userId AND IsCompleted = 0`);
+  return result.recordset[0].count;
+}
+
 async function countOverdue(userId) {
   const conn = await getPool();
   if (isSqlite(conn)) {
@@ -157,4 +171,4 @@ async function createLog(userId, data) {
   return result.recordset[0];
 }
 
-module.exports = { getTasksByUser, createTask, findTaskById, toggleComplete, removeTask, countDueToday, countOverdue, getLogs, createLog };
+module.exports = { getTasksByUser, createTask, findTaskById, toggleComplete, removeTask, countDueToday, countOverdue, countOpen, getLogs, createLog };

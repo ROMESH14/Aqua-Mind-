@@ -4,6 +4,7 @@ import TaskItem from '../components/ui/TaskItem';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
 import Select from '../components/ui/Select';
+import TimePicker from '../components/ui/TimePicker';
 import { maintenanceService } from '../services/maintenanceService';
 import { tankService } from '../services/tankService';
 import PageHero from '../components/ui/PageHero';
@@ -141,7 +142,10 @@ function Maintenance() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Due Time</label>
-                  <input className="form-input" placeholder="e.g. 6PM" value={form.dueTime} onChange={(e) => setForm({ ...form, dueTime: e.target.value })} />
+                  <TimePicker
+                    value={form.dueTime}
+                    onChange={(e) => setForm({ ...form, dueTime: e.target.value })}
+                  />
                 </div>
               </div>
               <div className="form-group">

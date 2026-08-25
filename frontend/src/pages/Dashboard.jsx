@@ -96,6 +96,7 @@ function Dashboard() {
   const tanks = num(stats[0]);
   const fish = num(stats[1]);
   const tasksDue = num(stats[3]);
+  const taskCount = data?.taskCount != null ? Number(data.taskCount) : tasksDue;
   const alerts = data?.alerts?.length || 0;
   const hasTrend = data?.temperatureTrend?.some((t) => t.points?.length > 0);
   const health = useMemo(() => {
@@ -133,6 +134,13 @@ function Dashboard() {
                 <div className="metric-label">Total fish</div>
               </div>
               <span className="metric-arrow down">▼</span>
+            </div>
+            <div className="metric-row">
+              <div>
+                <div className="metric-value tasks">{taskCount}</div>
+                <div className="metric-label">Task count</div>
+              </div>
+              <span className="metric-arrow tasks">{taskCount > 0 ? '▲' : '▼'}</span>
             </div>
           </div>
 

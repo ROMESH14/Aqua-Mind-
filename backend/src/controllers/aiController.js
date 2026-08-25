@@ -410,15 +410,7 @@ async function analyzePlants(req, res) {
 }
 
 async function analyzeDesign(req, res) {
-  const design = designTank({
-    tankType: req.body.tankType || 'Community',
-    volumeLiters: req.body.volumeLiters,
-    theme: req.body.theme,
-    lighting: req.body.lighting,
-    livestock: req.body.livestock,
-    ph: req.body.ph,
-    temperature: req.body.temperature,
-  });
+  const design = designTank(req.body);
 
   res.json({
     ...design,

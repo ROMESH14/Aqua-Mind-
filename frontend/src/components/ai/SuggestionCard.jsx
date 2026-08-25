@@ -1,20 +1,64 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import EmptyState from '../ui/EmptyState';
+import { speciesGallery } from '../../utils/speciesImages';
 
 export function AdvisorEmptyState(props) {
   return <EmptyState {...props} />;
 }
 
 function CatalogImage({ src, alt, className, fallback }) {
-  const [url, setUrl] = useState(src || fallback);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
   return (
     <img
-      src={url}
+      src={failed ? fallback : (src || fallback)}
       alt={alt}
       className={className}
       loading="lazy"
-      onError={() => { if (url !== fallback) setUrl(fallback); }}
+      onError={() => setFailed(true)}
     />
+  );
+}
+
+function ImageCarousel({ images, name, alt, fallback, score }) {
+  const fromItem = (images || []).filter(Boolean);
+  const fromName = speciesGallery(name || alt);
+  const slides = (fromItem.length >= 3 ? fromItem : fromName.length ? fromName : fromItem).filter(Boolean);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [name, alt]);
+
+  const list = slides.length ? slides : [fallback];
+  const src = list[index] || fallback;
+
+  return (
+    <div className="suggestion-photo">
+      <div className="suggestion-image-wrap">
+        <CatalogImage src={src} alt={`${alt} photo ${index + 1}`} className="suggestion-image" fallback={fallback} />
+        <span className="suggestion-score">{score}</span>
+      </div>
+      <div className="suggestion-img-controls">
+        <button
+          type="button"
+          className="suggestion-img-nav suggestion-img-prev"
+          onClick={() => setIndex((current) => (current - 1 + list.length) % list.length)}
+        >
+          ‹ Back
+        </button>
+        <span className="suggestion-img-count">{index + 1} / {list.length}</span>
+        <button
+          type="button"
+          className="suggestion-img-nav suggestion-img-next"
+          onClick={() => setIndex((current) => (current + 1) % list.length)}
+        >
+          Next ›
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -27,6 +71,9 @@ function IdealParams({ ideal }) {
       {ideal.ammonia && <span>NH₃ {ideal.ammonia}</span>}
       {ideal.lighting && <span>Light: {ideal.lighting}</span>}
       {ideal.co2 && <span>CO₂: {ideal.co2}</span>}
+      {ideal.flow && <span>{ideal.flow}</span>}
+      {ideal.power && <span>{ideal.power}</span>}
+      {ideal.volume && <span>{ideal.volume}</span>}
     </div>
   );
 }
@@ -34,10 +81,13 @@ function IdealParams({ ideal }) {
 export function FishSuggestionCard({ item }) {
   return (
     <article className="suggestion-card">
-      <div className="suggestion-image-wrap">
-        <CatalogImage src={item.image} alt={item.name} className="suggestion-image" fallback="/deck-fish.png" />
-        <span className="suggestion-score">{item.compat}%</span>
-      </div>
+      <ImageCarousel
+        images={item.images}
+        name={item.name}
+        alt={item.name}
+        fallback={item.image || '/deck-fish.png'}
+        score={`${item.compat}%`}
+      />
       <div className="suggestion-body">
         <h3 className="suggestion-name">{item.name}</h3>
         {item.scientificName && <p className="suggestion-scientific">{item.scientificName}</p>}
@@ -59,10 +109,13 @@ export function PlantSuggestionCard({ item }) {
   const pct = parseInt(item.match, 10) || 0;
   return (
     <article className="suggestion-card">
-      <div className="suggestion-image-wrap">
-        <CatalogImage src={item.image} alt={item.name} className="suggestion-image" fallback="/deck-plants.png" />
-        <span className="suggestion-score">{item.match}</span>
-      </div>
+      <ImageCarousel
+        images={item.images}
+        name={item.name}
+        alt={item.name}
+        fallback={item.image || '/deck-plants.png'}
+        score={item.match}
+      />
       <div className="suggestion-body">
         <h3 className="suggestion-name">{item.name}</h3>
         {item.scientificName && <p className="suggestion-scientific">{item.scientificName}</p>}
