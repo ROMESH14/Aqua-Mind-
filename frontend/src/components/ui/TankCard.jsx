@@ -1,10 +1,34 @@
-function TankCard({ tank, onDelete }) {
-  const bubbleStyle = tank.bubblePosition === 'left'
-    ? { left: '20px', right: 'auto' }
-    : undefined;
+import { useEffect, useState } from 'react';
+import { DEFAULT_FISH_IMAGE, DEFAULT_PLANT_IMAGE, speciesImageUrl } from '../../utils/speciesImages';
+
+function SpeciesRow({ item, kind }) {
+  const fallback = kind === 'plant' ? DEFAULT_PLANT_IMAGE : DEFAULT_FISH_IMAGE;
+  const [src, setSrc] = useState(speciesImageUrl(item.name) || fallback);
+  const count = Number(item.count) || 1;
+
+  useEffect(() => {
+    setSrc(speciesImageUrl(item.name) || fallback);
+  }, [item.name, fallback]);
 
   return (
-    <div className="tank-card">
+    <div className={`tank-species tank-species--${kind}`}>
+      <img
+        className="tank-species-photo"
+        src={src}
+        alt={item.name}
+        onError={() => setSrc(fallback)}
+      />
+      <div className="tank-species-copy">
+        <span className="tank-species-name">{item.name}</span>
+        <span className="tank-species-count">{count === 1 ? '1 in tank' : `${count} in tank`}</span>
+      </div>
+    </div>
+  );
+}
+
+function TankCard({ tank, onDelete }) {
+  return (
+    <article className="tank-card">
       <div className="tank-visual" style={{ background: tank.visualBg }}>
         {onDelete && (
           <button
@@ -20,67 +44,100 @@ function TankCard({ tank, onDelete }) {
             −
           </button>
         )}
-        <div className="tank-water" style={{ bottom: 0, left: 0, right: 0, height: `${tank.waterHeight}px` }}>
-          <div className="tank-water-body" style={{ height: `${tank.waterHeight}px`, background: tank.waterBg }}>
-            <div className="water-surface" />
-          </div>
+        <div className="tank-rays" />
+        <div className="tank-water" style={{ background: tank.waterBg }}>
+          <div className="water-surface" />
         </div>
+        <div className="tank-sand" />
         {tank.plants.map((plant, i) => (
           <div
-            key={i}
+            key={`p-${i}`}
             className="tank-plant"
-            style={{
-              left: plant.left,
-              right: plant.right,
-              fontSize: `${plant.size}px`,
-            }}
+            style={{ left: plant.left, fontSize: `${plant.size}px` }}
           >
             {plant.emoji}
           </div>
         ))}
         {tank.fish.map((fish, i) => (
           <div
-            key={i}
+            key={`f-${i}`}
             className="tank-fish"
             style={{
               left: fish.left,
               top: fish.top,
               fontSize: `${fish.size}px`,
               animationDelay: `${fish.delay}s`,
+              animationDuration: `${fish.duration || 5}s`,
             }}
           >
             {fish.emoji}
           </div>
         ))}
-        <div className="tank-bubbles" style={bubbleStyle}>
+        <div className="tank-bubbles">
           <div className="bubble" />
           <div className="bubble" />
           <div className="bubble" />
         </div>
+        <div className="tank-visual-fade">
+          <div className="tank-visual-copy">
+            <h3 className="tank-name">{tank.name}</h3>
+            <div className="tank-badges">
+              {tank.volumeLiters ? <span className="tank-badge">{tank.volumeLiters}L</span> : null}
+              {tank.tankType ? <span className="tank-badge">{tank.tankType}</span> : null}
+              {tank.fishTotal > 0 ? <span className="tank-badge">{tank.fishTotal} fish</span> : null}
+              {tank.plantTotal > 0 ? <span className="tank-badge">{tank.plantTotal} plants</span> : null}
+            </div>
+          </div>
+        </div>
       </div>
+
       <div className="tank-info">
-        <div className="tank-name">{tank.name}</div>
-        <div className="tank-meta">{tank.meta}</div>
-        <div className="tank-params">
-          <div className="param-pill">
-            <span className="param-val" style={{ color: tank.paramColors.ph }}>{tank.params.ph}</span>
-            <span className="param-key">pH</span>
+        <section className="tank-life">
+          <header className="tank-life-head">
+            <span>Fish in this tank</span>
+            <em>{tank.fishTotal || 0}</em>
+          </header>
+          {tank.fishNames?.length ? (
+            <div className="tank-life-list">
+              {tank.fishNames.map((item) => (
+                <SpeciesRow key={item.name} item={item} kind="fish" />
+              ))}
+            </div>
+          ) : (
+            <p className="tank-life-empty">No fish added yet</p>
+          )}
+        </section>
+
+        <section className="tank-life tank-life--plants">
+          <header className="tank-life-head">
+            <span>Plants in this tank</span>
+            <em>{tank.plantTotal || 0}</em>
+          </header>
+          {tank.plantNames?.length ? (
+            <div className="tank-life-list">
+              {tank.plantNames.map((item) => (
+                <SpeciesRow key={item.name} item={item} kind="plant" />
+              ))}
+            </div>
+          ) : (
+            <p className="tank-life-empty">No plants added yet</p>
+          )}
+        </section>
+
+        {tank.hasReadings ? (
+          <div className="tank-readings">
+            <span style={{ color: tank.paramColors.ph }}>pH {tank.params.ph}</span>
+            <span style={{ color: tank.paramColors.temp }}>{tank.params.temp}</span>
+            <span style={{ color: tank.paramColors.nh3 }}>NH₃ {tank.params.nh3}</span>
           </div>
-          <div className="param-pill">
-            <span className="param-val" style={{ color: tank.paramColors.temp }}>{tank.params.temp}</span>
-            <span className="param-key">Temp</span>
+        ) : (
+          <div className="tank-status">
+            <div className={`status-dot ${tank.status}`} />
+            <span style={{ color: tank.statusColor }}>Water not logged yet</span>
           </div>
-          <div className="param-pill">
-            <span className="param-val" style={{ color: tank.paramColors.nh3 }}>{tank.params.nh3}</span>
-            <span className="param-key">NH₃</span>
-          </div>
-        </div>
-        <div className="tank-status">
-          <div className={`status-dot ${tank.status}`} />
-          <span style={{ color: tank.statusColor }}>{tank.statusText}</span>
-        </div>
+        )}
       </div>
-    </div>
+    </article>
   );
 }
 

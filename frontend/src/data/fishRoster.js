@@ -166,6 +166,7 @@ export const MONSTER_FISH = [...namesFrom(MONSTER_FOLDERS), 'Silver Dollar'];
 export const SHRIMP = namesFrom(SHRIMP_FOLDERS);
 export const SMALL_FISH = namesFrom(SMALL_FOLDERS);
 export const SMALL_AND_SHRIMP = [...SMALL_FISH, ...SHRIMP];
+export const ALL_FISH_NAMES = [...new Set([...SMALL_FISH, ...MONSTER_FISH, ...SHRIMP])].sort();
 
 export function isShrimpName(name) {
   return /shrimp|prawn/i.test(String(name || ''));

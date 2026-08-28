@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
 
 const plannerChildren = [
   { path: '/ai/plants', label: 'Plants' },
@@ -23,6 +24,9 @@ function AppTopbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const initials = user?.username?.slice(0, 2).toUpperCase() || 'AM';
+  const today = new Date().toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
+  });
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -38,6 +42,11 @@ function AppTopbar() {
   return (
     <header className="app-topbar">
       <MobileMenuButton />
+      <div className="app-greet">
+        <p className="app-greet-eyebrow">Your aquarium</p>
+        <strong>Hello, {user?.username || 'there'}</strong>
+        <span>{today}</span>
+      </div>
       <form className="app-search" onSubmit={handleSearch}>
         <span aria-hidden>⌕</span>
         <input
@@ -48,6 +57,7 @@ function AppTopbar() {
           onChange={(e) => setQuery(e.target.value)}
         />
       </form>
+      <NotifyBell />
       <div className="app-user">
         <span>{user?.username || 'Account'}</span>
         <button
@@ -65,6 +75,24 @@ function AppTopbar() {
         </button>
       </div>
     </header>
+  );
+}
+
+function NotifyBell() {
+  const notify = useNotifications();
+  if (!notify) return null;
+
+  return (
+    <button
+      type="button"
+      className="notify-bell"
+      aria-label="Turn on message alerts"
+      title="Messages pop up here when a tank or task needs you"
+      onClick={() => notify.enableBrowser()}
+    >
+      <span aria-hidden>🔔</span>
+      {notify.unread > 0 && <em>{notify.unread > 9 ? '9+' : notify.unread}</em>}
+    </button>
   );
 }
 

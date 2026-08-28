@@ -8,6 +8,22 @@ import numpy as np
 from .features import get_feature_columns, readings_to_feature_row
 from .rules import recommend_fish_rules, recommend_plant_rules
 from .thresholds import evaluate_forecast, evaluate_reading
+from .water_quality_ml import (
+    FEATURE_NAMES,
+    LABELS,
+    actions_for_issues,
+    catboost_feature_frame,
+    combine_ranges,
+    feature_row,
+    label_from_issues,
+    load_train_report,
+    param_violations,
+    reading_values,
+    resolve_inhabitants,
+    score_from_label,
+    species_status,
+    summarize_result,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = ROOT / 'models'
@@ -52,6 +68,9 @@ class ModelStore:
 
     def __init__(self):
         self.water_models = {}
+        self.quality_bundle = None
+        self.catboost_model = None
+        self.quality_meta = None
         self.fish_bundle = None
         self.plant_bundle = None
         self.water_meta = None
@@ -67,9 +86,41 @@ class ModelStore:
             if path.exists():
                 self.water_models[target] = joblib.load(path)
 
+        catboost_path = MODELS_DIR / 'water_quality_catboost.cbm'
+        user_train = Path(r'C:\Users\asus\OneDrive\Desktop\Finl Project\DataSet\Train\catboost_water.cbm')
+        if user_train.is_file():
+            catboost_path = user_train
+        catboost_meta = MODELS_DIR / 'water_quality_catboost.pkl'
+        if catboost_path.exists():
+            from catboost import CatBoostClassifier
+            self.catboost_model = CatBoostClassifier()
+            self.catboost_model.load_model(str(catboost_path))
+            self.quality_bundle = {
+                'model': self.catboost_model,
+                'feature_names': list(FEATURE_NAMES),
+                'labels': list(LABELS),
+                'algorithm': 'CatBoost',
+                'source_file': str(catboost_path),
+            }
+            if catboost_meta.exists():
+                saved = joblib.load(catboost_meta)
+                if isinstance(saved, dict):
+                    self.quality_bundle.update({k: v for k, v in saved.items() if k != 'model'})
+                    self.quality_bundle['model'] = self.catboost_model
+
+        quality_path = MODELS_DIR / 'water_quality_classifier_v1.pkl'
+        if self.quality_bundle is None and quality_path.exists():
+            self.quality_bundle = joblib.load(quality_path)
+
+        import json
+        quality_meta = MODELS_DIR / 'water_quality_meta.json'
+        if quality_meta.exists():
+            self.quality_meta = json.loads(quality_meta.read_text(encoding='utf-8'))
+        else:
+            self.quality_meta = load_train_report()
+
         meta_path = MODELS_DIR / 'water_meta.json'
         if meta_path.exists():
-            import json
             self.water_meta = json.loads(meta_path.read_text(encoding='utf-8'))
 
         fish_path = MODELS_DIR / 'fish_classifier_v1.pkl'
@@ -83,6 +134,10 @@ class ModelStore:
     @property
     def water_ready(self):
         return len(self.water_models) == len(WATER_TARGETS)
+
+    @property
+    def quality_ready(self):
+        return self.catboost_model is not None or self.quality_bundle is not None
 
     @property
     def fish_ready(self):
@@ -224,3 +279,91 @@ def recommend_fish(payload):
 def recommend_plants(payload):
     """POST /recommend/plants handler — Excel range rules."""
     return recommend_plant_rules(payload), 200
+
+
+def _model_card():
+    report = store.quality_meta or load_train_report() or {}
+    return {
+        'ready': store.quality_ready,
+        'algorithm': report.get('algorithm') or ('CatBoost' if store.catboost_model is not None else None),
+        'accuracy': report.get('best_accuracy'),
+        'accuracy_pct': report.get('best_accuracy_pct'),
+        'rounds': report.get('rounds', []),
+        'best_round': report.get('best_round'),
+        'dataset_rows': report.get('dataset_rows'),
+        'fish_species': report.get('fish_species'),
+        'plant_species': report.get('plant_species'),
+        'feature_names': report.get('feature_names', FEATURE_NAMES),
+        'source_file': (store.quality_bundle or {}).get('source_file'),
+    }
+
+
+def assess_water_quality(payload):
+    """Score one reading against the tank's fish and plant ranges."""
+    store.load()
+    values = reading_values(payload.get('reading') or payload)
+    species_list, unmatched = resolve_inhabitants(
+        payload.get('fishNames') or payload.get('fish') or [],
+        payload.get('plantNames') or payload.get('plants') or [],
+    )
+    ranges = combine_ranges(species_list)
+    issues = param_violations(values, ranges)
+    rule_label = label_from_issues(issues, values, ranges)
+
+    source = 'rules'
+    confidence = 0.74
+    label = rule_label
+    proba = None
+    if store.quality_ready:
+        row = np.array([feature_row(values, ranges)])
+        if store.catboost_model is not None:
+            frame = catboost_feature_frame(values, ranges)
+            raw = store.catboost_model.predict(frame)
+            pred_id = int(np.asarray(raw).ravel()[0])
+            labels = list(LABELS)
+            if store.quality_bundle and store.quality_bundle.get('labels'):
+                labels = list(store.quality_bundle['labels'])
+            label = labels[pred_id] if 0 <= pred_id < len(labels) else rule_label
+            proba = float(np.max(store.catboost_model.predict_proba(frame)[0]))
+            confidence = proba
+        else:
+            bundle = store.quality_bundle
+            names = bundle.get('feature_names') or FEATURE_NAMES
+            lookup = dict(zip(FEATURE_NAMES, row[0]))
+            X = np.array([[lookup.get(name, 0) for name in names]])
+            X_in = bundle['scaler'].transform(X) if bundle.get('scaler') is not None else X
+            pred_id = int(bundle['model'].predict(X_in)[0])
+            labels = bundle.get('labels') or list(LABELS)
+            label = labels[pred_id] if 0 <= pred_id < len(labels) else rule_label
+            if hasattr(bundle['model'], 'predict_proba'):
+                proba = float(np.max(bundle['model'].predict_proba(X_in)[0]))
+                confidence = proba
+        if rule_label == 'critical' and label in ('excellent', 'good'):
+            label = 'critical'
+        source = 'ml'
+
+    species_cards = species_status(species_list, values)
+    actions = actions_for_issues(values, issues)
+    score = score_from_label(label, issues, proba)
+    tank_name = payload.get('tankName')
+
+    return {
+        'status': label,
+        'label': label.capitalize(),
+        'score': score,
+        'confidence': round(float(confidence), 3),
+        'summary': summarize_result(label, issues, species_cards, tank_name),
+        'issues': issues,
+        'actions': actions,
+        'species': species_cards,
+        'unmatched': unmatched,
+        'ranges': ranges,
+        'reading': values,
+        'source': source,
+        'model': _model_card(),
+    }, 200
+
+
+def quality_model_info():
+    store.load()
+    return _model_card(), 200

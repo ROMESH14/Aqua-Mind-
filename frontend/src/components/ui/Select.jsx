@@ -111,6 +111,7 @@ function Select({
         ref={triggerRef}
         type="button"
         className={triggerClass}
+        data-value={stringValue}
         onClick={handleTriggerClick}
         disabled={disabled}
         aria-haspopup="listbox"
@@ -135,6 +136,7 @@ function Select({
               key={opt.value || '__empty__'}
               role="option"
               aria-selected={opt.value === stringValue}
+              data-value={opt.value}
               className={[
                 'form-select-option',
                 opt.value === stringValue && 'selected',

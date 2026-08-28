@@ -5,13 +5,17 @@ from flask_cors import CORS
 
 from .catalog import fish_image_root, plant_image_root
 from .inference import (
+    assess_water_quality,
     predict_water_quality,
+    quality_model_info,
     recommend_fish,
     recommend_plants,
     store,
 )
+from .water_quality_ml import scan_test_image
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 CORS(app)
 
 
@@ -22,6 +26,7 @@ def health():
         'message': 'AquaMind AI Engine is running!',
         'models': {
             'water': store.water_ready,
+            'water_quality': store.quality_ready,
             'fish': store.fish_ready,
             'plants': store.plant_ready,
         },
@@ -55,6 +60,32 @@ def post_recommend_plants():
     body = request.get_json(silent=True) or {}
     result, status = recommend_plants(body)
     return jsonify(result), status
+
+
+@app.route('/assess/water-quality', methods=['POST'])
+def post_assess_water():
+    body = request.get_json(silent=True) or {}
+    result, status = assess_water_quality(body)
+    return jsonify(result), status
+
+
+@app.route('/model/water-quality', methods=['GET'])
+def get_water_quality_model():
+    result, status = quality_model_info()
+    return jsonify(result), status
+
+
+@app.route('/scan/water-test', methods=['POST'])
+def post_scan_water_test():
+    body = request.get_json(silent=True) or {}
+    image = body.get('image')
+    if not image:
+        return jsonify({'message': 'Upload a test-kit photo as image (base64)'}), 400
+    try:
+        result = scan_test_image(image)
+    except Exception as exc:
+        return jsonify({'message': f'Could not read that image: {exc}'}), 400
+    return jsonify(result), 200
 
 
 # --- Legacy GET endpoints (offline fallbacks) ---

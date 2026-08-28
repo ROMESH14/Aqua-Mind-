@@ -8,6 +8,7 @@ const aiRoutes = require('./aiRoutes');
 const growthRoutes = require('./growthRoutes');
 const equipmentRoutes = require('./equipmentRoutes');
 const planRoutes = require('./planRoutes');
+const notifyRoutes = require('./notifyRoutes');
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use('/growth', growthRoutes);
 router.use('/equipment', equipmentRoutes);
 router.use('/plans', planRoutes);
 router.use('/ai', aiRoutes);
+router.use('/notify', notifyRoutes);
 
 module.exports = router;

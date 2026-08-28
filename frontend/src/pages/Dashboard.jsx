@@ -7,7 +7,6 @@ import TaskItem from '../components/ui/TaskItem';
 import EmptyState from '../components/ui/EmptyState';
 import { dashboardService } from '../services/dashboardService';
 import { maintenanceService } from '../services/maintenanceService';
-import { useAuth } from '../context/AuthContext';
 
 function num(stat, fallback = 0) {
   const raw = stat?.value;
@@ -73,13 +72,8 @@ function Donut({ value, label }) {
 }
 
 function Dashboard() {
-  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-
-  const today = new Date().toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'short', year: 'numeric',
-  });
 
   useEffect(() => {
     dashboardService.get()
@@ -93,8 +87,8 @@ function Dashboard() {
   };
 
   const stats = data?.stats || [];
-  const tanks = num(stats[0]);
-  const fish = num(stats[1]);
+  const tanks = data?.tankCount != null ? Number(data.tankCount) : num(stats[0]);
+  const fish = data?.totalFish != null ? Number(data.totalFish) : num(stats[1]);
   const tasksDue = num(stats[3]);
   const taskCount = data?.taskCount != null ? Number(data.taskCount) : tasksDue;
   const alerts = data?.alerts?.length || 0;
@@ -108,15 +102,6 @@ function Dashboard() {
   return (
     <div className="page-screen dash-fit-screen">
       <div className="page dash-fit">
-        <div className="dash-welcome">
-          <div>
-            <p className="page-hero-eyebrow">Your aquarium</p>
-            <h1 className="page-title">Hello, {user?.username || 'there'}</h1>
-            <p className="page-subtitle">{today}</p>
-          </div>
-          <Link to="/tanks" className="btn btn-primary">＋ Add Tank</Link>
-        </div>
-
         {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
 
         <div className="dash-mosaic">
@@ -142,6 +127,7 @@ function Dashboard() {
               </div>
               <span className="metric-arrow tasks">{taskCount > 0 ? '▲' : '▼'}</span>
             </div>
+            <Link to="/tanks" className="btn btn-primary btn-sm metric-add">＋ Add Tank</Link>
           </div>
 
           <MiniCalendar />
@@ -164,7 +150,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="widget dash-span-2">
+          <div className="widget dash-span-2 dash-temp-widget">
             <SectionHeader icon="🌡" title="Water temperature — 7 days" />
             {hasTrend ? <TemperatureChart trends={data.temperatureTrend} /> : (
               <EmptyState icon="📈" title="No temperature data" message="Log water readings to see trends." />
@@ -173,35 +159,37 @@ function Dashboard() {
 
           <Donut value={health} label={alerts ? 'Needs attention' : 'Looking stable'} />
 
-          <div className="widget">
-            <SectionHeader icon="💧" title="Water alerts" />
-            {data?.alerts?.length > 0 ? (
-              <div className="alerts-list">
-                {data.alerts.slice(0, 2).map((alert) => (
-                  <AlertItem key={alert.title + alert.time} {...alert} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState icon="🔔" title="No alerts" message="Water issues will show here." />
-            )}
-            <Link to="/water" className="btn btn-ghost btn-sm" style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>View parameters</Link>
-          </div>
+          <div className="dash-pair">
+            <div className="widget">
+              <SectionHeader icon="💧" title="Water alerts" />
+              {data?.alerts?.length > 0 ? (
+                <div className="alerts-list">
+                  {data.alerts.slice(0, 2).map((alert) => (
+                    <AlertItem key={alert.title + alert.time} {...alert} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon="🔔" title="No alerts" message="Water issues will show here." />
+              )}
+              <Link to="/water" className="btn btn-ghost btn-sm" style={{ width: '100%', marginTop: '12px', justifyContent: 'center' }}>View parameters</Link>
+            </div>
 
-          <div className="widget dash-span-2">
-            <SectionHeader icon="📅" title="Today's tasks">
-              <Link to="/maintenance" className="btn btn-ghost btn-sm">View all</Link>
-            </SectionHeader>
-            {data?.tasks?.length > 0 ? (
-              <div className="tasks-list">
-                {data.tasks.slice(0, 3).map((task) => (
-                  <TaskItem key={task.id} {...task} initialDone={task.done} onToggle={() => handleToggleTask(task.id)} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState icon="📅" title="No tasks scheduled" message="Create maintenance tasks to stay on track.">
-                <Link to="/maintenance" className="btn btn-primary btn-sm" style={{ marginTop: '12px' }}>Add Task</Link>
-              </EmptyState>
-            )}
+            <div className="widget">
+              <SectionHeader icon="📅" title="Today's tasks">
+                <Link to="/maintenance" className="btn btn-ghost btn-sm">View all</Link>
+              </SectionHeader>
+              {data?.tasks?.length > 0 ? (
+                <div className="tasks-list">
+                  {data.tasks.slice(0, 3).map((task) => (
+                    <TaskItem key={task.id} {...task} initialDone={task.done} onToggle={() => handleToggleTask(task.id)} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon="📅" title="No tasks scheduled" message="Create maintenance tasks to stay on track.">
+                  <Link to="/maintenance" className="btn btn-primary btn-sm" style={{ marginTop: '12px' }}>Add Task</Link>
+                </EmptyState>
+              )}
+            </div>
           </div>
         </div>
       </div>

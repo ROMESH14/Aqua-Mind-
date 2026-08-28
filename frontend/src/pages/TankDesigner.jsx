@@ -3,83 +3,78 @@ import AdvisorPageShell from '../components/ai/AdvisorPageShell';
 import SourceTag from '../components/ai/SourceTag';
 import { AdvisorEmptyState, FishSuggestionCard, PlantSuggestionCard } from '../components/ai/SuggestionCard';
 import { enrichFishList, enrichPlantList } from '../utils/enrichAiResults';
+import { scenePhoto, setupFromKit } from '../data/tankScenes';
 import Select from '../components/ui/Select';
 import { aiService } from '../services/aiService';
 import { planService } from '../services/planService';
 
 const DEFAULT_FORM = {
-  tankType: 'Community',
+  tankType: 'Planted',
   volumeLiters: '60',
   tankStyle: 'glass',
   tankShape: 'rectangle',
-  theme: 'community',
+  theme: 'planted',
   lighting: 'medium',
   livestock: 'mixed',
-  substrate: 'gravel',
-  hardscape: 'wood-rock',
-  co2: 'none',
+  substrate: 'aqua-soil',
+  hardscape: 'none',
+  co2: 'low',
   experience: 'beginner',
   ph: '7.0',
   temperature: '25',
-  background: 'plain',
+  background: 'black',
 };
 
-const SHAPE_LABEL = {
-  rectangle: 'rectangle',
-  cube: 'cube',
-  bowfront: 'bowfront',
-  cylinder: 'cylinder',
-  hexagon: 'hexagon',
-};
+const SUBSTRATE_LABEL = { 'aqua-soil': 'Aqua soil', sand: 'Sand', gravel: 'Gravel' };
+const HARDSCAPE_LABEL = { none: 'No hardscape', wood: 'Driftwood', rock: 'Rocks', 'wood-rock': 'Wood and rocks' };
+const BACKGROUND_LABEL = { plain: 'Plain background', black: 'Black film', image: 'Printed scene' };
+const TYPE_LABEL = { Community: 'Community', Planted: 'Planted', 'Monster Fish': 'Monster fish' };
+const THEME_LABEL = { community: 'Community theme', planted: 'Planted theme', nature: 'Nature theme', monster: 'Monster theme' };
+const LIVESTOCK_LABEL = { mixed: 'Mixed community', schooling: 'Schooling', predator: 'Predator / monster' };
+const EXPERIENCE_LABEL = { beginner: 'Beginner', intermediate: 'Some experience', advanced: 'Advanced' };
 
-function hasMonsterFish(stocking = []) {
-  const names = stocking.map((item) => item.name || '').join(' ').toLowerCase();
-  return /silver dollar|bichir|bala shark|oscar|jaguar|dempsey|flowerhorn|arowana|knifefish|frontosa|iridescent shark|parrot/.test(names);
-}
-
-function tankArtSrc(tankStyle, tankShape, theme, stocking) {
-  if (theme === 'monster' || hasMonsterFish(stocking)) {
-    return '/tanks/tank-glass-monster.png?v=3';
-  }
-  const material = tankStyle === 'cement' ? 'cement' : 'glass';
-  const shape = SHAPE_LABEL[tankShape] || 'rectangle';
-  if (material === 'glass' && shape === 'rectangle') {
-    if (theme === 'planted' || theme === 'nature') return '/tanks/tank-glass-planted.png';
-    return '/tanks/tank-glass-community.png';
-  }
-  return `/tanks/tank-${material}-${shape}.png`;
-}
-
-function TankScene({ theme = 'community', tankStyle = 'glass', tankShape = 'rectangle', fish = [], plants = [] }) {
-  const styleLabel = tankStyle === 'cement' ? 'cement' : 'glass';
-  const shapeLabel = SHAPE_LABEL[tankShape] || 'rectangle';
-  const src = tankArtSrc(styleLabel, shapeLabel, theme, fish);
-  const fishNames = fish.map((item) => item.name).filter(Boolean).join(', ');
-  const plantNames = plants.map((item) => item.name).filter(Boolean).join(', ');
+function TankScene({ form = DEFAULT_FORM, fish = [], plants = [], shoppingList = [] }) {
+  const setup = setupFromKit(form, shoppingList);
+  const shape = setup.tankShape || 'rectangle';
+  const style = setup.tankStyle === 'cement' ? 'cement' : 'glass';
+  const hardscape = setup.hardscape || 'none';
+  const photo = scenePhoto(setup, plants, fish, shoppingList);
+  const caption = [
+    TYPE_LABEL[setup.tankType] || setup.tankType,
+    THEME_LABEL[setup.theme] || setup.theme,
+    LIVESTOCK_LABEL[setup.livestock] || setup.livestock,
+    EXPERIENCE_LABEL[setup.experience] || setup.experience,
+    style === 'cement' ? 'Cement' : 'Glass',
+    shape,
+    SUBSTRATE_LABEL[setup.substrate] || setup.substrate,
+    HARDSCAPE_LABEL[hardscape] || hardscape,
+    BACKGROUND_LABEL[setup.background] || setup.background,
+    setup.co2 === 'none' ? 'No CO₂' : `${setup.co2} CO₂`,
+  ].filter(Boolean).join(' · ');
 
   return (
-    <div className={`aq-preview aq-preview-${shapeLabel}`} aria-label="Tank design photo">
-      <img className="aq-preview-photo" src={src} alt={`${styleLabel} ${shapeLabel} aquarium`} />
-      <div className="aq-preview-species">
-        {fish.map((item) => (
-          <div key={item.name} className="aq-preview-chip">
-            <img src={item.image || item.images?.[0] || '/deck-fish.png'} alt="" />
-            <span>{item.name}</span>
-          </div>
-        ))}
-        {plants.map((item) => (
-          <div key={item.name} className="aq-preview-chip aq-preview-chip-plant">
-            <img src={item.image || item.images?.[0] || '/deck-plants.png'} alt="" />
-            <span>{item.name}</span>
-          </div>
-        ))}
+    <div className={`aq-preview aq-preview-${shape}`} aria-label="Tank layout preview">
+      <div className={`aq-preview-frame aq-preview-${style}`}>
+        <img className="aq-preview-photo" src={photo} alt={caption} />
       </div>
-      <p className="tank-scene-caption">
-        {styleLabel === 'cement' ? 'Cement' : 'Glass'} {shapeLabel} tank
-        {fishNames ? ` stocked with ${fishNames}` : ''}
-        {plantNames ? ` and ${plantNames}` : ''}.
-        The layout photo is a style reference — the chips are the compatible species for this setup.
-      </p>
+      {(fish.length > 0 || plants.length > 0) && (
+        <div className="aq-preview-species">
+          {fish.map((item) => (
+            <div key={item.name} className="aq-preview-chip">
+              <img src={item.image || item.images?.[0] || '/deck-fish.png'} alt="" />
+              <span>{item.name}</span>
+            </div>
+          ))}
+          {plants.map((item) => (
+            <div key={item.name} className="aq-preview-chip aq-preview-chip-plant">
+              <img src={item.image || item.images?.[0] || '/deck-plants.png'} alt="" />
+              <span>{item.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="tank-scene-caption">{caption}</p>
+      <p className="tank-scene-warning">This picture is only a rough idea of the tank so you can picture the layout. It does not match the actual recommended fish and plants.</p>
     </div>
   );
 }
@@ -230,7 +225,7 @@ function TankDesigner() {
   return (
     <AdvisorPageShell
       title="Tank Designer"
-      subtitle="Answer more setup questions to get a kit list, fish and plant photos, and a rough tank picture."
+      subtitle="Fill in the tank details, then generate a layout with a matching picture."
       error={error}
       emptyIcon="🎨"
     >
@@ -254,7 +249,7 @@ function TankDesigner() {
         {!showResults ? (
           <div className="ai-panel-body ai-panel-body--form">
             <div className="ai-input-col">
-              <p className="ai-panel-hint">Tell us how you want the new tank to look and what will live in it.</p>
+              <p className="ai-panel-hint">Answer the setup questions first. The realistic tank picture appears after you click Generate layout.</p>
               <div className="ai-form-grid">
                 <div className="form-group">
                   <label className="form-label">Tank type</label>
@@ -374,11 +369,15 @@ function TankDesigner() {
             {result ? (
               <div className="ai-output-col">
                 <TankScene
-                  theme={result.theme}
-                  tankStyle={result.tankStyle || form.tankStyle}
-                  tankShape={result.tankShape || form.tankShape}
+                  form={{
+                    ...form,
+                    theme: result.theme || form.theme,
+                    tankStyle: result.tankStyle || form.tankStyle,
+                    tankShape: result.tankShape || form.tankShape,
+                  }}
                   fish={result.stocking}
                   plants={result.plants}
+                  shoppingList={result.shoppingList}
                 />
                 <p className="ai-output-label">What you need to build this tank</p>
                 <div className="designer-kit">

@@ -3,9 +3,25 @@ import TankCard from '../components/ui/TankCard';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
 import Select from '../components/ui/Select';
+import SpeciesTagInput from '../components/ui/SpeciesTagInput';
 import { tankService } from '../services/tankService';
 import { mapTankForCard } from '../utils/tankMapper';
 import PageHero from '../components/ui/PageHero';
+import { ALL_FISH_NAMES, fishNamesForTank } from '../data/fishRoster';
+import { FISH_PROFILES, PLANT_PROFILES } from '../data/aiCatalog';
+
+const EMPTY_FORM = {
+  name: '',
+  volumeLiters: '',
+  tankType: '',
+  fish: [],
+  plants: [],
+};
+
+const CATALOG_FISH = [...new Set([...ALL_FISH_NAMES, ...Object.keys(FISH_PROFILES)])].sort();
+const ALL_PLANT_NAMES = Object.keys(PLANT_PROFILES);
+const QUICK_FISH = ['Neon Tetra', 'Guppy', 'Betta', 'Corydoras', 'Cherry Shrimp', 'Angelfish'];
+const QUICK_PLANTS = ['Java Fern', 'Anubias', 'Amazon Sword', 'Java Moss', 'Vallisneria'];
 
 function Tanks() {
   const [tanks, setTanks] = useState([]);
@@ -14,7 +30,7 @@ function Tanks() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ name: '', volumeLiters: '', tankType: '', fishCount: 0, plantCount: 0 });
+  const [form, setForm] = useState(EMPTY_FORM);
 
   const loadTanks = () => {
     tankService.getAll()
@@ -41,6 +57,11 @@ function Tanks() {
     }
   };
 
+  const closeCreate = () => {
+    setShowModal(false);
+    setForm(EMPTY_FORM);
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
@@ -48,16 +69,19 @@ function Tanks() {
         name: form.name,
         volumeLiters: form.volumeLiters ? parseInt(form.volumeLiters, 10) : null,
         tankType: form.tankType || null,
-        fishCount: parseInt(form.fishCount, 10) || 0,
-        plantCount: parseInt(form.plantCount, 10) || 0,
+        fishNames: form.fish,
+        plantNames: form.plants,
       });
-      setShowModal(false);
-      setForm({ name: '', volumeLiters: '', tankType: '', fishCount: 0, plantCount: 0 });
+      closeCreate();
       loadTanks();
     } catch (err) {
       setError(err.message);
     }
   };
+
+  const fishSuggestions = form.tankType
+    ? [...new Set([...fishNamesForTank(form.tankType), ...Object.keys(FISH_PROFILES)])]
+    : CATALOG_FISH;
 
   return (
     <div className="page-screen">
@@ -83,36 +107,60 @@ function Tanks() {
         )}
 
         {showModal && (
-          <Modal title="New Tank" onClose={() => setShowModal(false)}>
+          <Modal title="New Tank" wide onClose={closeCreate}>
             <form onSubmit={handleCreate}>
+              <p className="form-intro">Tell us who lives here. Water tests like pH, temperature, and ammonia can be logged later on the Water page.</p>
               <div className="form-group">
                 <label className="form-label">Tank Name *</label>
-                <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Volume (Liters)</label>
-                <input className="form-input" type="number" value={form.volumeLiters} onChange={(e) => setForm({ ...form, volumeLiters: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tank Type</label>
-                <Select value={form.tankType} onChange={(e) => setForm({ ...form, tankType: e.target.value })}>
-                  <option value="">Select type</option>
-                  <option value="Community">Community</option>
-                  <option value="Planted">Planted</option>
-                  <option value="Monster Fish">Monster Fish</option>
-                  <option value="Nano">Nano</option>
-                </Select>
+                <input
+                  className="form-input"
+                  value={form.name}
+                  placeholder="Living room community"
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Fish Count</label>
-                  <input className="form-input" type="number" min="0" value={form.fishCount} onChange={(e) => setForm({ ...form, fishCount: e.target.value })} />
+                  <label className="form-label">Volume (Liters)</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min="1"
+                    placeholder="60"
+                    value={form.volumeLiters}
+                    onChange={(e) => setForm({ ...form, volumeLiters: e.target.value })}
+                  />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Plant Count</label>
-                  <input className="form-input" type="number" min="0" value={form.plantCount} onChange={(e) => setForm({ ...form, plantCount: e.target.value })} />
+                  <label className="form-label">Tank Type</label>
+                  <Select value={form.tankType} onChange={(e) => setForm({ ...form, tankType: e.target.value })}>
+                    <option value="">Select type</option>
+                    <option value="Community">Community</option>
+                    <option value="Planted">Planted</option>
+                    <option value="Monster Fish">Monster Fish</option>
+                    <option value="Nano">Nano</option>
+                  </Select>
                 </div>
               </div>
+              <SpeciesTagInput
+                label="What fish live here?"
+                hint="Add each species by name. Type your own or pick a suggestion."
+                placeholder="e.g. Neon Tetra"
+                suggestions={fishSuggestions}
+                quickPicks={QUICK_FISH}
+                items={form.fish}
+                onChange={(fish) => setForm({ ...form, fish })}
+              />
+              <SpeciesTagInput
+                label="What plants grow here?"
+                hint="List the plants in this tank. Skip this if it is fish-only."
+                placeholder="e.g. Java Fern"
+                suggestions={ALL_PLANT_NAMES}
+                quickPicks={QUICK_PLANTS}
+                items={form.plants}
+                onChange={(plants) => setForm({ ...form, plants })}
+              />
               <button type="submit" className="auth-btn">Create Tank</button>
             </form>
           </Modal>

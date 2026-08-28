@@ -5,30 +5,43 @@ import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
 import Select from '../components/ui/Select';
 import TimePicker from '../components/ui/TimePicker';
+import TaskCalendar, { dateKey } from '../components/ui/TaskCalendar';
 import { maintenanceService } from '../services/maintenanceService';
 import { tankService } from '../services/tankService';
 import PageHero from '../components/ui/PageHero';
+import { useNotifications } from '../context/NotificationContext';
+
+const LOG_PAGE_SIZE = 8;
+
+function pageNumbers(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const set = new Set([1, total, current - 1, current, current + 1]);
+  return [...set].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+}
 
 function Maintenance() {
+  const notify = useNotifications();
   const [todayTasks, setTodayTasks] = useState([]);
-  const [weekTasks, setWeekTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]);
   const [logs, setLogs] = useState([]);
   const [tanks, setTanks] = useState([]);
   const [overdue, setOverdue] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState('');
+  const [selectedDay, setSelectedDay] = useState(new Date());
+  const [logPage, setLogPage] = useState(1);
   const [form, setForm] = useState({ taskName: '', dueDate: '', dueTime: '', tankId: '' });
 
   const load = async () => {
     try {
-      const [today, week, logData, tankData] = await Promise.all([
+      const [today, all, logData, tankData] = await Promise.all([
         maintenanceService.getTasks('today'),
-        maintenanceService.getTasks('week'),
+        maintenanceService.getTasks(),
         maintenanceService.getLogs(),
         tankService.getAll(),
       ]);
       setTodayTasks(today);
-      setWeekTasks(week);
+      setAllTasks(all);
       setLogs(logData);
       setTanks(tankData);
       setOverdue(today.filter((t) => t.due === 'Overdue').length);
@@ -37,17 +50,24 @@ function Maintenance() {
     }
   };
 
+  const todayKey = dateKey(new Date());
+  const dayTasks = allTasks.filter((task) => dateKey(task.dueDate) === dateKey(selectedDay));
+  const upcomingTasks = allTasks
+    .filter((task) => !task.done && dateKey(task.dueDate) > todayKey)
+    .slice(0, 8);
+
   useEffect(() => { load(); }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      await maintenanceService.createTask({
+      const saved = await maintenanceService.createTask({
         taskName: form.taskName,
         dueDate: form.dueDate,
         dueTime: form.dueTime || null,
         tankId: form.tankId ? parseInt(form.tankId, 10) : null,
       });
+      if (saved.notify) notify?.announce(saved.notify);
       setShowModal(false);
       setForm({ taskName: '', dueDate: '', dueTime: '', tankId: '' });
       load();
@@ -63,6 +83,12 @@ function Maintenance() {
 
   const formatDate = (d) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
+  const logPages = Math.max(1, Math.ceil(logs.length / LOG_PAGE_SIZE));
+  const safeLogPage = Math.min(logPage, logPages);
+  const pageLogs = logs.slice((safeLogPage - 1) * LOG_PAGE_SIZE, safeLogPage * LOG_PAGE_SIZE);
+  const logFrom = logs.length ? (safeLogPage - 1) * LOG_PAGE_SIZE + 1 : 0;
+  const logTo = Math.min(safeLogPage * LOG_PAGE_SIZE, logs.length);
+
   return (
     <div className="page-screen">
       <div className="page">
@@ -73,45 +99,59 @@ function Maintenance() {
         {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
 
         <div className="maintenance-grid">
-          <div className="card">
-            <SectionHeader icon="⏰" title="Due Today">
-              {overdue > 0 && <span style={{ fontSize: '0.75rem', color: 'var(--red-light)' }}>{overdue} overdue</span>}
-            </SectionHeader>
-            {todayTasks.length > 0 ? (
-              <div className="tasks-list">
-                {todayTasks.map((task) => (
-                  <TaskItem key={task.id} {...task} initialDone={task.done} onToggle={() => handleToggle(task.id)} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState icon="⏰" title="Nothing due today" message="Scheduled tasks for today will show up here." />
-            )}
+          <div className="card care-split">
+            <section>
+              <SectionHeader icon="⏰" title="Due Today">
+                {overdue > 0 && <span style={{ fontSize: '0.75rem', color: 'var(--red-light)' }}>{overdue} overdue</span>}
+              </SectionHeader>
+              {todayTasks.length > 0 ? (
+                <div className="tasks-list">
+                  {todayTasks.map((task) => (
+                    <TaskItem key={task.id} {...task} initialDone={task.done} onToggle={() => handleToggle(task.id)} />
+                  ))}
+                </div>
+              ) : (
+                <p className="task-cal-empty">Nothing due today.</p>
+              )}
+            </section>
+            <section>
+              <SectionHeader icon="⏭" iconVariant="light" title="Upcoming" />
+              {upcomingTasks.length > 0 ? (
+                <div className="tasks-list">
+                  {upcomingTasks.map((task) => (
+                    <TaskItem key={task.id} {...task} initialDone={task.done} onToggle={() => handleToggle(task.id)} />
+                  ))}
+                </div>
+              ) : (
+                <p className="task-cal-empty">No upcoming tasks yet. Add a water change for later this week.</p>
+              )}
+            </section>
           </div>
 
           <div className="card">
             <SectionHeader icon="📆" iconVariant="light" title="This Week" />
-            {weekTasks.length > 0 ? (
-              <div className="tasks-list">
-                {weekTasks.map((task) => (
+            <TaskCalendar tasks={allTasks} selected={selectedDay} onSelect={setSelectedDay} />
+            {dayTasks.length > 0 ? (
+              <div className="tasks-list" style={{ marginTop: '12px' }}>
+                {dayTasks.map((task) => (
                   <TaskItem key={task.id} {...task} initialDone={task.done} onToggle={() => handleToggle(task.id)} />
                 ))}
               </div>
-            ) : (
-              <EmptyState icon="📆" title="No upcoming tasks" message="Plan water changes and maintenance for the week ahead." />
-            )}
+            ) : null}
           </div>
 
           <div className="card maintenance-full">
             <SectionHeader icon="📋" iconVariant="light" title="Maintenance Log" />
             {logs.length > 0 ? (
+              <>
               <div className="table-wrap">
                 <table className="log-table">
                   <thead>
                     <tr><th>Date</th><th>Task</th><th>Tank</th><th>Duration</th><th>Notes</th></tr>
                   </thead>
                   <tbody>
-                    {logs.map((row) => (
-                      <tr key={row.date + row.task}>
+                    {pageLogs.map((row, index) => (
+                      <tr key={`${row.date}-${row.task}-${index}`}>
                         <td>{formatDate(row.date)}</td>
                         <td className="log-val">{row.task}</td>
                         <td>{row.tank}</td>
@@ -122,6 +162,42 @@ function Maintenance() {
                   </tbody>
                 </table>
               </div>
+              {logs.length > LOG_PAGE_SIZE && (
+                <div className="pager">
+                  <span className="pager-meta">{logFrom}–{logTo} of {logs.length}</span>
+                  <div className="pager-btns">
+                    <button
+                      type="button"
+                      className="pager-btn"
+                      disabled={safeLogPage <= 1}
+                      onClick={() => setLogPage(safeLogPage - 1)}
+                    >
+                      Prev
+                    </button>
+                    {pageNumbers(safeLogPage, logPages).map((n, i, arr) => (
+                      <span key={n} className="pager-group">
+                        {i > 0 && n - arr[i - 1] > 1 && <em className="pager-gap">…</em>}
+                        <button
+                          type="button"
+                          className={`pager-btn${n === safeLogPage ? ' is-current' : ''}`}
+                          onClick={() => setLogPage(n)}
+                        >
+                          {n}
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      className="pager-btn"
+                      disabled={safeLogPage >= logPages}
+                      onClick={() => setLogPage(safeLogPage + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+              </>
             ) : (
               <EmptyState icon="📋" title="No maintenance history" message="Completed tasks will be recorded here." />
             )}

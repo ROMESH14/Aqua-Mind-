@@ -77,6 +77,35 @@ def test_recommend_plants(client):
     assert 'image' in first
 
 
+def test_assess_water_quality(client):
+    res = client.post('/assess/water-quality', json={
+        'tankName': 'Plant Tank 01',
+        'fishNames': [{'name': 'Neon Tetra'}],
+        'plantNames': [{'name': 'Java Fern'}],
+        'reading': {
+            'pH': 7.0,
+            'Temperature': 25,
+            'Ammonia': 0,
+            'Nitrite': 0,
+            'Nitrate': 8,
+            'DissolvedO2': 7.5,
+        },
+    })
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data['status'] in ('excellent', 'good', 'watch', 'critical')
+    assert 'actions' in data
+    assert 'model' in data
+
+
+def test_water_quality_model_info(client):
+    res = client.get('/model/water-quality')
+    assert res.status_code == 200
+    data = res.get_json()
+    assert 'ready' in data
+    assert 'rounds' in data
+
+
 def test_media_from_recommendation(client):
     res = client.post('/recommend/fish', json={
         'tankType': 'Community',

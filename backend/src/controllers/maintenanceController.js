@@ -1,5 +1,6 @@
 const maintenanceModel = require('../models/maintenanceModel');
 const tankModel = require('../models/tankModel');
+const alertModel = require('../models/alertModel');
 
 function formatTask(task) {
   const today = new Date();
@@ -64,7 +65,23 @@ async function createTask(req, res) {
   const task = await maintenanceModel.createTask(req.user.id, {
     taskName, dueDate, dueTime, tankId,
   });
-  res.status(201).json(formatTask({ ...task, TankName: null }));
+
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let notify = null;
+  if (due <= today) {
+    const row = await alertModel.create(req.user.id, {
+      tankId: tankId || null,
+      alertType: 'task',
+      title: `${taskName} is due`,
+      detail: due < today ? 'This care task is overdue' : 'Due today',
+    });
+    notify = row ? alertModel.formatNotify(row) : null;
+  }
+
+  res.status(201).json({ ...formatTask({ ...task, TankName: null }), notify });
 }
 
 async function toggleTask(req, res) {

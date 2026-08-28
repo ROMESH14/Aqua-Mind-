@@ -96,7 +96,9 @@ async function getDashboard(req, res) {
 
   res.json({
     stats,
-    taskCount,
+    tankCount: Number(tankCount) || 0,
+    totalFish: Number(totalFish) || 0,
+    taskCount: Number(taskCount) || 0,
     alerts: alerts.map(formatAlert),
     tasks: formattedTasks,
     temperatureTrend: Object.values(tanks),

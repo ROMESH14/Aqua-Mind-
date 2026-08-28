@@ -30,14 +30,16 @@ def main():
         run('export_data.py')
 
     water_ok = run('train_water.py')
+    quality_ok = run('train_water_quality.py')
     fish_ok = run('train_fish.py')
     plants_ok = run('train_plants.py')
 
     print('\n' + '=' * 60)
     print('Retrain summary:')
-    print(f'  Water:  {"OK" if water_ok else "SKIPPED/FAILED (need water_readings.csv with 20+ rows)"}')
-    print(f'  Fish:   {"OK" if fish_ok else "SKIPPED/FAILED"}')
-    print(f'  Plants: {"OK" if plants_ok else "SKIPPED/FAILED"}')
+    print(f'  Water forecast: {"OK" if water_ok else "SKIPPED/FAILED (need water_readings.csv with 20+ rows)"}')
+    print(f'  Water quality:  {"OK" if quality_ok else "SKIPPED/FAILED"}')
+    print(f'  Fish:           {"OK" if fish_ok else "SKIPPED/FAILED"}')
+    print(f'  Plants:         {"OK" if plants_ok else "SKIPPED/FAILED"}')
     print('=' * 60)
     print('\nRestart ai-engine: python app.py')
 

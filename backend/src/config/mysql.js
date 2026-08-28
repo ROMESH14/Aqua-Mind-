@@ -59,6 +59,8 @@ async function ensureSchema(db) {
       TankType VARCHAR(100) NULL,
       FishCount INT NOT NULL DEFAULT 0,
       PlantCount INT NOT NULL DEFAULT 0,
+      FishNames TEXT NULL,
+      PlantNames TEXT NULL,
       CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
     )`,
@@ -150,6 +152,22 @@ async function ensureSchema(db) {
 
   for (const sql of statements) {
     await db.query(sql);
+  }
+
+  await addColumnIfMissing(db, 'Tanks', 'FishNames', 'TEXT NULL');
+  await addColumnIfMissing(db, 'Tanks', 'PlantNames', 'TEXT NULL');
+  await addColumnIfMissing(db, 'Alerts', 'IsRead', 'TINYINT(1) NOT NULL DEFAULT 0');
+  await db.query('ALTER TABLE Equipment MODIFY Notes MEDIUMTEXT NULL').catch(() => {});
+}
+
+async function addColumnIfMissing(db, table, column, definition) {
+  const [rows] = await db.query(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column]
+  );
+  if (!rows.length) {
+    await db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
 }
 

@@ -84,9 +84,12 @@ async function update(req, res) {
 }
 
 async function remove(req, res) {
-  const deleted = await equipmentModel.remove(req.params.id, req.user.id);
-  if (!deleted) return res.status(404).json({ message: 'Equipment not found' });
-  res.json({ message: 'Equipment deleted' });
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ message: 'Invalid equipment' });
+  const existing = await equipmentModel.findById(id, req.user.id);
+  const deleted = await equipmentModel.remove(id, req.user.id);
+  if (!existing && !deleted) return res.status(404).json({ message: 'Equipment not found' });
+  res.json({ message: 'Item deleted successfully' });
 }
 
 module.exports = { getAll, create, update, remove };

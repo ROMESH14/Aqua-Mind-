@@ -1,0 +1,61 @@
+{
+  "algorithm": "CatBoost",
+  "feature_names": [
+    "pH",
+    "Temperature",
+    "Ammonia",
+    "Nitrite",
+    "Nitrate",
+    "DissolvedO2",
+    "ph_min",
+    "ph_max",
+    "temp_min",
+    "temp_max",
+    "max_ammonia",
+    "max_nitrite",
+    "max_nitrate",
+    "min_do"
+  ],
+  "labels": [
+    "excellent",
+    "good",
+    "watch",
+    "critical"
+  ],
+  "dataset_rows": 2430,
+  "fish_species": 122,
+  "plant_species": 40,
+  "train_rows": 1944,
+  "test_rows": 486,
+  "best_accuracy": 0.9527,
+  "best_accuracy_pct": 95.27,
+  "best_round": 4,
+  "model_file": "water_quality_catboost.cbm",
+  "source_file": "C:\\\\Users\\\\asus\\\\OneDrive\\\\Desktop\\\\Finl Project\\\\DataSet\\\\Train\\\\catboost_water.cbm",
+  "rounds": [
+    {
+      "round": 1,
+      "name": "Logistic Regression",
+      "accuracy": 0.7058,
+      "accuracy_pct": 70.58
+    },
+    {
+      "round": 2,
+      "name": "Decision Tree",
+      "accuracy": 0.8765,
+      "accuracy_pct": 87.65
+    },
+    {
+      "round": 3,
+      "name": "Artificial Neural Network",
+      "accuracy": 0.90,
+      "accuracy_pct": 90.0
+    },
+    {
+      "round": 4,
+      "name": "CatBoost",
+      "accuracy": 0.9527,
+      "accuracy_pct": 95.27
+    }
+  ]
+}

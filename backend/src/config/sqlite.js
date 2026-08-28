@@ -28,6 +28,8 @@ db.exec(`
     TankType TEXT,
     FishCount INTEGER NOT NULL DEFAULT 0,
     PlantCount INTEGER NOT NULL DEFAULT 0,
+    FishNames TEXT,
+    PlantNames TEXT,
     CreatedAt TEXT DEFAULT (datetime('now'))
   );
 
@@ -110,5 +112,15 @@ db.exec(`
     CreatedAt TEXT DEFAULT (datetime('now'))
   );
 `);
+
+function addColumnIfMissing(table, column, definition) {
+  const cols = db.pragma(`table_info(${table})`);
+  if (!cols.some((col) => col.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+addColumnIfMissing('Tanks', 'FishNames', 'TEXT');
+addColumnIfMissing('Tanks', 'PlantNames', 'TEXT');
 
 module.exports = db;

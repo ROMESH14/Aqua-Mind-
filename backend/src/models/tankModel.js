@@ -1,5 +1,22 @@
 const { getPool, isSqlite, isMysql } = require('../config/db');
 const { queryOne, queryAll, execute } = require('../config/dbHelpers');
+const { serializeInhabitants, countInhabitants } = require('../utils/tankInhabitants');
+
+function tankPayload(data) {
+  const fishNames = serializeInhabitants(data.fishNames);
+  const plantNames = serializeInhabitants(data.plantNames);
+  const fishCount = countInhabitants(data.fishNames) || data.fishCount || 0;
+  const plantCount = countInhabitants(data.plantNames) || data.plantCount || 0;
+  return {
+    name: data.name,
+    volumeLiters: data.volumeLiters || null,
+    tankType: data.tankType || null,
+    fishCount: fishCount || 0,
+    plantCount: plantCount || 0,
+    fishNames,
+    plantNames,
+  };
+}
 
 const listSql = `
   SELECT t.*,
@@ -35,38 +52,42 @@ async function findById(tankId, userId) {
 
 async function create(userId, data) {
   const conn = await getPool();
+  const payload = tankPayload(data);
   if (isSqlite(conn) || isMysql(conn)) {
     const info = await execute(
       conn,
-      'INSERT INTO Tanks (UserID, Name, VolumeLiters, TankType, FishCount, PlantCount) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, data.name, data.volumeLiters || null, data.tankType || null, data.fishCount || 0, data.plantCount || 0]
+      'INSERT INTO Tanks (UserID, Name, VolumeLiters, TankType, FishCount, PlantCount, FishNames, PlantNames) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId, payload.name, payload.volumeLiters, payload.tankType, payload.fishCount, payload.plantCount, payload.fishNames, payload.plantNames]
     );
     return queryOne(conn, 'SELECT * FROM Tanks WHERE TankID = ?', [info.lastInsertRowid || info.insertId]);
   }
   const result = await conn.pool.request()
-    .input('userId', conn.sql.Int, userId).input('name', conn.sql.NVarChar, data.name)
-    .input('volumeLiters', conn.sql.Int, data.volumeLiters || null).input('tankType', conn.sql.NVarChar, data.tankType || null)
-    .input('fishCount', conn.sql.Int, data.fishCount || 0).input('plantCount', conn.sql.Int, data.plantCount || 0)
-    .query(`INSERT INTO Tanks (UserID, Name, VolumeLiters, TankType, FishCount, PlantCount) OUTPUT INSERTED.* VALUES (@userId, @name, @volumeLiters, @tankType, @fishCount, @plantCount)`);
+    .input('userId', conn.sql.Int, userId).input('name', conn.sql.NVarChar, payload.name)
+    .input('volumeLiters', conn.sql.Int, payload.volumeLiters).input('tankType', conn.sql.NVarChar, payload.tankType)
+    .input('fishCount', conn.sql.Int, payload.fishCount).input('plantCount', conn.sql.Int, payload.plantCount)
+    .input('fishNames', conn.sql.NVarChar, payload.fishNames).input('plantNames', conn.sql.NVarChar, payload.plantNames)
+    .query(`INSERT INTO Tanks (UserID, Name, VolumeLiters, TankType, FishCount, PlantCount, FishNames, PlantNames) OUTPUT INSERTED.* VALUES (@userId, @name, @volumeLiters, @tankType, @fishCount, @plantCount, @fishNames, @plantNames)`);
   return result.recordset[0];
 }
 
 async function update(tankId, userId, data) {
   const conn = await getPool();
+  const payload = tankPayload(data);
   if (isSqlite(conn) || isMysql(conn)) {
     await execute(
       conn,
-      'UPDATE Tanks SET Name=?, VolumeLiters=?, TankType=?, FishCount=?, PlantCount=? WHERE TankID=? AND UserID=?',
-      [data.name, data.volumeLiters || null, data.tankType || null, data.fishCount ?? 0, data.plantCount ?? 0, tankId, userId]
+      'UPDATE Tanks SET Name=?, VolumeLiters=?, TankType=?, FishCount=?, PlantCount=?, FishNames=?, PlantNames=? WHERE TankID=? AND UserID=?',
+      [payload.name, payload.volumeLiters, payload.tankType, payload.fishCount, payload.plantCount, payload.fishNames, payload.plantNames, tankId, userId]
     );
     return queryOne(conn, 'SELECT * FROM Tanks WHERE TankID = ?', [tankId]);
   }
   const result = await conn.pool.request()
     .input('tankId', conn.sql.Int, tankId).input('userId', conn.sql.Int, userId)
-    .input('name', conn.sql.NVarChar, data.name).input('volumeLiters', conn.sql.Int, data.volumeLiters || null)
-    .input('tankType', conn.sql.NVarChar, data.tankType || null).input('fishCount', conn.sql.Int, data.fishCount ?? 0)
-    .input('plantCount', conn.sql.Int, data.plantCount ?? 0)
-    .query(`UPDATE Tanks SET Name=@name, VolumeLiters=@volumeLiters, TankType=@tankType, FishCount=@fishCount, PlantCount=@plantCount OUTPUT INSERTED.* WHERE TankID=@tankId AND UserID=@userId`);
+    .input('name', conn.sql.NVarChar, payload.name).input('volumeLiters', conn.sql.Int, payload.volumeLiters)
+    .input('tankType', conn.sql.NVarChar, payload.tankType).input('fishCount', conn.sql.Int, payload.fishCount)
+    .input('plantCount', conn.sql.Int, payload.plantCount)
+    .input('fishNames', conn.sql.NVarChar, payload.fishNames).input('plantNames', conn.sql.NVarChar, payload.plantNames)
+    .query(`UPDATE Tanks SET Name=@name, VolumeLiters=@volumeLiters, TankType=@tankType, FishCount=@fishCount, PlantCount=@plantCount, FishNames=@fishNames, PlantNames=@plantNames OUTPUT INSERTED.* WHERE TankID=@tankId AND UserID=@userId`);
   return result.recordset[0];
 }
 
@@ -82,21 +103,17 @@ async function remove(tankId, userId) {
 }
 
 async function countByUser(userId) {
-  const conn = await getPool();
-  if (isSqlite(conn) || isMysql(conn)) {
-    return queryOne(conn, 'SELECT COUNT(*) AS count FROM Tanks WHERE UserID = ?', [userId]).count;
-  }
-  const result = await conn.pool.request().input('userId', conn.sql.Int, userId).query('SELECT COUNT(*) AS count FROM Tanks WHERE UserID = @userId');
-  return result.recordset[0].count;
+  const tanks = await findByUser(userId);
+  return tanks.length;
 }
 
 async function totalFishByUser(userId) {
-  const conn = await getPool();
-  if (isSqlite(conn) || isMysql(conn)) {
-    return queryOne(conn, 'SELECT COALESCE(SUM(FishCount), 0) AS total FROM Tanks WHERE UserID = ?', [userId]).total;
-  }
-  const result = await conn.pool.request().input('userId', conn.sql.Int, userId).query('SELECT ISNULL(SUM(FishCount), 0) AS total FROM Tanks WHERE UserID = @userId');
-  return result.recordset[0].total;
+  const tanks = await findByUser(userId);
+  return tanks.reduce((sum, tank) => {
+    const fromNames = countInhabitants(tank.FishNames || tank.fishNames);
+    const fromCol = Number(tank.FishCount ?? tank.fishCount ?? 0);
+    return sum + (fromNames || fromCol || 0);
+  }, 0);
 }
 
 module.exports = { findByUser, findById, create, update, remove, countByUser, totalFishByUser };
