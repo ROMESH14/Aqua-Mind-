@@ -36,7 +36,7 @@ function Tanks() {
 
   const loadTanks = () => {
     tankService.getAll()
-      .then(setTanks)
+      .then((rows) => setTanks(Array.isArray(rows) ? rows : []))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   };
@@ -78,8 +78,12 @@ function Tanks() {
       name: tank.name || '',
       volumeLiters: tank.volumeLiters != null ? String(tank.volumeLiters) : '',
       tankType: tank.tankType || '',
-      fish: Array.isArray(tank.fishNames) ? tank.fishNames : [],
-      plants: Array.isArray(tank.plantNames) ? tank.plantNames : [],
+      fish: Array.isArray(tank.fishNames)
+        ? tank.fishNames.map((item) => (typeof item === 'string' ? { name: item, count: 1 } : item)).filter((item) => item?.name)
+        : [],
+      plants: Array.isArray(tank.plantNames)
+        ? tank.plantNames.map((item) => (typeof item === 'string' ? { name: item, count: 1 } : item)).filter((item) => item?.name)
+        : [],
     });
     setError('');
     setShowModal(true);

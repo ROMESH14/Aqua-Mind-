@@ -32,8 +32,23 @@ function paramColor(status) {
   return 'var(--red-light)';
 }
 
+function asSpeciesList(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        const name = item.trim();
+        return name ? { name, count: 1 } : null;
+      }
+      const name = String(item?.name || '').trim();
+      if (!name) return null;
+      return { name, count: Math.max(1, Number(item.count) || 1) };
+    })
+    .filter(Boolean);
+}
+
 function totalCount(items = []) {
-  return items.reduce((sum, item) => sum + (Number(item.count) || 1), 0);
+  return asSpeciesList(items).reduce((sum, item) => sum + (Number(item.count) || 1), 0);
 }
 
 function sceneFish(items = []) {
@@ -76,8 +91,8 @@ function scenePlants(items = []) {
 export function mapTankForCard(tank, index = 0) {
   const status = tank.status || 'ok';
   const theme = THEMES[tank.tankType] || FALLBACK_THEMES[index % FALLBACK_THEMES.length];
-  const fishNames = tank.fishNames || [];
-  const plantNames = tank.plantNames || [];
+  const fishNames = asSpeciesList(tank.fishNames);
+  const plantNames = asSpeciesList(tank.plantNames);
   const hasReadings = tank.latestPH != null || tank.latestTemp != null || tank.latestAmmonia != null;
 
   return {

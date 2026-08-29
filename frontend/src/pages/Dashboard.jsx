@@ -5,6 +5,7 @@ import TemperatureChart from '../components/ui/TemperatureChart';
 import AlertItem from '../components/ui/AlertItem';
 import TaskItem from '../components/ui/TaskItem';
 import EmptyState from '../components/ui/EmptyState';
+import { dateKey } from '../components/ui/TaskCalendar';
 import { dashboardService } from '../services/dashboardService';
 import { maintenanceService } from '../services/maintenanceService';
 
@@ -15,24 +16,56 @@ function num(stat, fallback = 0) {
   return Number.isNaN(n) ? fallback : n;
 }
 
-function MiniCalendar() {
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+function MiniCalendar({ tasks = [] }) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
   const today = now.getDate();
+  const todayKey = dateKey(now);
   const start = new Date(year, month, 1).getDay();
   const days = new Date(year, month + 1, 0).getDate();
   const cells = [...Array(start).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
   const monthName = now.toLocaleDateString('en-GB', { month: 'long' });
 
+  const byDay = {};
+  tasks.forEach((task) => {
+    const key = dateKey(task.dueDate);
+    if (!key) return;
+    if (!byDay[key]) byDay[key] = [];
+    byDay[key].push(task);
+  });
+
+  const markFor = (day) => {
+    if (!day) return '';
+    const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayTasks = byDay[key] || [];
+    if (!dayTasks.length) return '';
+    if (dayTasks.some((task) => !task.done && dateKey(task.dueDate) < todayKey)) return 'is-overdue';
+    if (dayTasks.some((task) => !task.done)) return 'is-due';
+    return 'is-done';
+  };
+
   return (
-    <div className="widget">
+    <div className="widget cal-widget">
       <div className="widget-title">{monthName}</div>
       <div className="cal-grid">
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d) => <span key={d} className="cal-dow">{d}</span>)}
-        {cells.map((day, i) => (
-          <span key={i} className={`cal-day${day === today ? ' is-today' : ''}`}>{day || ''}</span>
-        ))}
+        {WEEKDAYS.map((d, i) => <span key={`dow-${i}`} className="cal-dow">{d}</span>)}
+        {cells.map((day, i) => {
+          const mark = markFor(day);
+          return (
+            <span key={`day-${i}`} className={`cal-day${day === today ? ' is-today' : ''}${mark ? ` ${mark}` : ''}`}>
+              {day || ''}
+              {day ? <i className={`cal-dot${mark ? ` ${mark}` : ' is-empty'}`} aria-hidden="true" /> : null}
+            </span>
+          );
+        })}
+      </div>
+      <div className="task-cal-legend cal-legend">
+        <span><i className="is-due" /> Due</span>
+        <span><i className="is-overdue" /> Overdue</span>
+        <span><i className="is-done" /> Done</span>
       </div>
     </div>
   );
@@ -66,38 +99,53 @@ function Donut({ value, label }) {
         <text x="21" y="23" textAnchor="middle" className="donut-text">{pct}%</text>
       </svg>
       <p className="donut-caption">{label}</p>
-      <Link to="/water" className="btn btn-primary btn-sm">View water</Link>
+      <Link to="/water" className="btn btn-primary btn-sm donut-action">View water</Link>
     </div>
   );
 }
 
 function Dashboard() {
   const [data, setData] = useState(null);
+  const [monthTasks, setMonthTasks] = useState([]);
   const [error, setError] = useState('');
 
+  const loadDash = async () => {
+    const [dash, tasks] = await Promise.all([
+      dashboardService.get(),
+      maintenanceService.getTasks().catch(() => []),
+    ]);
+    setData(dash);
+    setMonthTasks(Array.isArray(tasks) ? tasks : []);
+  };
+
   useEffect(() => {
-    dashboardService.get()
-      .then(setData)
-      .catch((err) => setError(err.message));
+    loadDash().catch((err) => setError(err.message));
   }, []);
 
   const handleToggleTask = async (taskId) => {
-    await maintenanceService.toggleTask(taskId);
-    setData(await dashboardService.get());
+    try {
+      await maintenanceService.toggleTask(taskId);
+      await loadDash();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
-  const stats = data?.stats || [];
+  const stats = Array.isArray(data?.stats) ? data.stats : [];
+  const alertList = Array.isArray(data?.alerts) ? data.alerts : [];
+  const taskList = Array.isArray(data?.tasks) ? data.tasks : [];
+  const trends = Array.isArray(data?.temperatureTrend) ? data.temperatureTrend : [];
   const tanks = data?.tankCount != null ? Number(data.tankCount) : num(stats[0]);
   const fish = data?.totalFish != null ? Number(data.totalFish) : num(stats[1]);
   const tasksDue = num(stats[3]);
   const taskCount = data?.taskCount != null ? Number(data.taskCount) : tasksDue;
-  const alerts = data?.alerts?.length || 0;
-  const hasTrend = data?.temperatureTrend?.some((t) => t.points?.length > 0);
+  const alerts = alertList.length;
+  const hasTrend = trends.some((t) => Array.isArray(t?.points) && t.points.length > 0);
   const health = useMemo(() => {
     if (!data) return 72;
-    const penalty = (data.alerts?.length || 0) * 8 + tasksDue * 4;
+    const penalty = alerts * 8 + tasksDue * 4;
     return Math.max(28, Math.min(98, 92 - penalty));
-  }, [data, tasksDue]);
+  }, [data, alerts, tasksDue]);
 
   return (
     <div className="page-screen dash-fit-screen">
@@ -111,26 +159,23 @@ function Dashboard() {
                 <div className="metric-value up">{tanks}</div>
                 <div className="metric-label">Active tanks</div>
               </div>
-              <span className="metric-arrow up">▲</span>
             </div>
             <div className="metric-row">
               <div>
                 <div className="metric-value down">{fish}</div>
                 <div className="metric-label">Total fish</div>
               </div>
-              <span className="metric-arrow down">▼</span>
             </div>
             <div className="metric-row">
               <div>
-                <div className="metric-value tasks">{taskCount}</div>
+                <div className="metric-value tasks">{monthTasks.length || taskCount}</div>
                 <div className="metric-label">Task count</div>
               </div>
-              <span className="metric-arrow tasks">{taskCount > 0 ? '▲' : '▼'}</span>
             </div>
             <Link to="/tanks" className="btn btn-primary btn-sm metric-add">＋ Add Tank</Link>
           </div>
 
-          <MiniCalendar />
+          <MiniCalendar tasks={monthTasks} />
 
           <div className="widget">
             <div className="widget-title">Progress</div>
@@ -152,7 +197,7 @@ function Dashboard() {
 
           <div className="widget dash-span-2 dash-temp-widget">
             <SectionHeader icon="🌡" title="Water temperature — 7 days" />
-            {hasTrend ? <TemperatureChart trends={data.temperatureTrend} /> : (
+            {hasTrend ? <TemperatureChart trends={trends} /> : (
               <EmptyState icon="📈" title="No temperature data" message="Log water readings to see trends." />
             )}
           </div>
@@ -162,10 +207,10 @@ function Dashboard() {
           <div className="dash-pair">
             <div className="widget">
               <SectionHeader icon="💧" title="Water alerts" />
-              {data?.alerts?.length > 0 ? (
+              {alertList.length > 0 ? (
                 <div className="alerts-list">
-                  {data.alerts.slice(0, 4).map((alert) => (
-                    <AlertItem key={alert.title + alert.time} {...alert} />
+                  {alertList.slice(0, 4).map((alert, index) => (
+                    <AlertItem key={`${alert.title || 'alert'}-${alert.time || index}`} {...alert} />
                   ))}
                 </div>
               ) : (
@@ -178,10 +223,10 @@ function Dashboard() {
               <SectionHeader icon="📅" title="Today's tasks">
                 <Link to="/maintenance" className="btn btn-ghost btn-sm">View all</Link>
               </SectionHeader>
-              {data?.tasks?.length > 0 ? (
+              {taskList.length > 0 ? (
                 <div className="tasks-list">
-                  {data.tasks.slice(0, 3).map((task) => (
-                    <TaskItem key={task.id} {...task} initialDone={task.done} onToggle={() => handleToggleTask(task.id)} />
+                  {taskList.slice(0, 4).map((task, index) => (
+                    <TaskItem key={task.id || `task-${index}`} {...task} initialDone={task.done} onToggle={() => handleToggleTask(task.id)} />
                   ))}
                 </div>
               ) : (

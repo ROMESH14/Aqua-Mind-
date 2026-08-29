@@ -70,7 +70,7 @@ export function NotificationProvider({ children }) {
     seen.current.add(key);
     if (item.tag) seen.current.add(item.tag);
     if (item.id) seen.current.add(String(item.id));
-    pushItem(item);
+    pushItem({ ...item, read: false });
     setToast(item);
     setUnread((count) => count + 1);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -171,7 +171,6 @@ export function NotificationProvider({ children }) {
   };
 
   const openInbox = async () => {
-    setUnread(0);
     try {
       const rows = await notifyService.list();
       if (Array.isArray(rows)) {
@@ -180,12 +179,22 @@ export function NotificationProvider({ children }) {
           const extra = current.filter((row) => !keys.has(String(row.tag || row.id)));
           return [...extra, ...rows].slice(0, 20);
         });
+        setUnread(rows.filter((row) => !row.read).length);
       }
-      await notifyService.markRead();
     } catch {
       /* ignore */
     }
     await enableBrowser();
+  };
+
+  const markInboxRead = async () => {
+    setItems((current) => current.map((row) => ({ ...row, read: true })));
+    setUnread(0);
+    try {
+      await notifyService.markRead();
+    } catch {
+      /* ignore */
+    }
   };
 
   const value = useMemo(() => ({
@@ -195,6 +204,7 @@ export function NotificationProvider({ children }) {
     announce: sendMessage,
     enableBrowser,
     openInbox,
+    markInboxRead,
     dismissToast: () => setToast(null),
   }), [toast, items, unread]);
 

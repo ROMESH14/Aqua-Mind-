@@ -3,11 +3,19 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function dateKey(value) {
   if (!value) return '';
   if (typeof value === 'string') {
-    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const us = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (us) {
+      return `${us[3]}-${String(us[1]).padStart(2, '0')}-${String(us[2]).padStart(2, '0')}`;
+    }
   }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return '';
+  const utcMidnight = date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0;
+  if (utcMidnight) {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+  }
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
@@ -41,7 +49,6 @@ function TaskCalendar({ tasks = [], selected, onSelect }) {
 
   const monthLabel = selectedDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   const selectedKey = dateKey(selectedDate);
-  const selectedTasks = byDay[selectedKey] || [];
 
   const shiftMonth = (delta) => {
     const next = new Date(year, month + delta, 1);
@@ -92,15 +99,6 @@ function TaskCalendar({ tasks = [], selected, onSelect }) {
         <span><i className="is-overdue" /> Overdue</span>
         <span><i className="is-done" /> Done</span>
       </div>
-
-      {selectedTasks.length > 0 && (
-        <div className="task-cal-day">
-          <p>
-            {selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}
-            {` · ${selectedTasks.length} task${selectedTasks.length === 1 ? '' : 's'}`}
-          </p>
-        </div>
-      )}
     </div>
   );
 }

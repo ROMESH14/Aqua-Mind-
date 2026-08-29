@@ -8,25 +8,29 @@ import { aiService } from '../services/aiService';
 import { planService } from '../services/planService';
 
 const DEFAULT_PLANTS = {
-  volumeLiters: '60',
-  tankType: 'Planted',
-  style: 'nature',
-  experience: 'beginner',
-  lighting: 'medium',
-  co2: 'none',
-  substrate: 'aqua-soil',
-  hardscape: 'wood-rock',
-  maintenance: 'medium',
-  livestock: 'community',
-  ph: '6.8',
-  temperature: '25',
-  waterHardness: 'medium',
-  fertilizer: 'liquid',
-  flow: 'medium',
-  plantGoal: 'easy-green',
-  waterChange: 'weekly',
-  budget: 'medium',
+  volumeLiters: '',
+  tankType: '',
+  style: '',
+  experience: '',
+  lighting: '',
+  co2: '',
+  substrate: '',
+  hardscape: '',
+  maintenance: '',
+  livestock: '',
+  ph: '',
+  temperature: '',
+  waterHardness: '',
+  fertilizer: '',
+  flow: '',
+  plantGoal: '',
+  waterChange: '',
+  budget: '',
 };
+
+function formIncomplete(form) {
+  return Object.values(form).some((value) => String(value ?? '').trim() === '');
+}
 
 function PlantedTankAssistant() {
   const [plantForm, setPlantForm] = useState(DEFAULT_PLANTS);
@@ -54,6 +58,10 @@ function PlantedTankAssistant() {
   const update = (field) => (e) => setPlantForm({ ...plantForm, [field]: e.target.value });
 
   const runAnalysis = async () => {
+    if (formIncomplete(plantForm)) {
+      setError('Fill every field so the plant plan matches your tank.');
+      return;
+    }
     setAnalyzing(true);
     setError('');
     try {
@@ -156,11 +164,12 @@ function PlantedTankAssistant() {
             <div className="ai-form-grid">
               <div className="form-group">
                 <label className="form-label">Tank size (L)</label>
-                <input className="form-input" type="number" min="10" value={plantForm.volumeLiters} onChange={update('volumeLiters')} />
+                <input className="form-input" type="number" min="10" placeholder="e.g. 60" value={plantForm.volumeLiters} onChange={update('volumeLiters')} />
               </div>
               <div className="form-group">
                 <label className="form-label">Tank type</label>
                 <Select value={plantForm.tankType} onChange={update('tankType')}>
+                  <option value="">Select</option>
                   <option value="Planted">Planted</option>
                   <option value="Community">Community</option>
                   <option value="Monster Fish">Monster Fish</option>
@@ -169,6 +178,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Aquascape style</label>
                 <Select value={plantForm.style} onChange={update('style')}>
+                  <option value="">Select</option>
                   <option value="nature">Nature / aquascape</option>
                   <option value="dutch">Dutch (stem plants)</option>
                   <option value="iwagumi">Iwagumi (stone)</option>
@@ -179,6 +189,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Your experience</label>
                 <Select value={plantForm.experience} onChange={update('experience')}>
+                  <option value="">Select</option>
                   <option value="beginner">Beginner</option>
                   <option value="intermediate">Some experience</option>
                   <option value="advanced">Advanced</option>
@@ -187,6 +198,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Lighting</label>
                 <Select value={plantForm.lighting} onChange={update('lighting')}>
+                  <option value="">Select</option>
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
@@ -195,6 +207,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">CO₂</label>
                 <Select value={plantForm.co2} onChange={update('co2')}>
+                  <option value="">Select</option>
                   <option value="none">None</option>
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -204,6 +217,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Substrate</label>
                 <Select value={plantForm.substrate} onChange={update('substrate')}>
+                  <option value="">Select</option>
                   <option value="aqua-soil">Aqua soil</option>
                   <option value="sand">Sand</option>
                   <option value="gravel">Gravel</option>
@@ -212,6 +226,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Hardscape</label>
                 <Select value={plantForm.hardscape} onChange={update('hardscape')}>
+                  <option value="">Select</option>
                   <option value="none">None yet</option>
                   <option value="wood">Driftwood</option>
                   <option value="rock">Rocks</option>
@@ -221,6 +236,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Time for care</label>
                 <Select value={plantForm.maintenance} onChange={update('maintenance')}>
+                  <option value="">Select</option>
                   <option value="low">Low (easy plants)</option>
                   <option value="medium">A few hours a week</option>
                   <option value="high">High (trimming / CO₂)</option>
@@ -229,6 +245,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Who will live there</label>
                 <Select value={plantForm.livestock} onChange={update('livestock')}>
+                  <option value="">Select</option>
                   <option value="plants-only">Plants only</option>
                   <option value="shrimp">Shrimp / snails</option>
                   <option value="community">Community fish</option>
@@ -237,15 +254,16 @@ function PlantedTankAssistant() {
               </div>
               <div className="form-group">
                 <label className="form-label">Target pH</label>
-                <input className="form-input" type="number" step="0.1" min="5" max="9" value={plantForm.ph} onChange={update('ph')} />
+                <input className="form-input" type="number" step="0.1" min="5" max="9" placeholder="e.g. 6.8" value={plantForm.ph} onChange={update('ph')} />
               </div>
               <div className="form-group">
                 <label className="form-label">Target temp (°C)</label>
-                <input className="form-input" type="number" step="0.1" min="15" max="34" value={plantForm.temperature} onChange={update('temperature')} />
+                <input className="form-input" type="number" step="0.1" min="15" max="34" placeholder="e.g. 25" value={plantForm.temperature} onChange={update('temperature')} />
               </div>
               <div className="form-group">
                 <label className="form-label">Water hardness</label>
                 <Select value={plantForm.waterHardness} onChange={update('waterHardness')}>
+                  <option value="">Select</option>
                   <option value="soft">Soft</option>
                   <option value="medium">Medium</option>
                   <option value="hard">Hard / tap</option>
@@ -254,6 +272,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Fertilizer</label>
                 <Select value={plantForm.fertilizer} onChange={update('fertilizer')}>
+                  <option value="">Select</option>
                   <option value="none">None</option>
                   <option value="liquid">Liquid only</option>
                   <option value="root-tabs">Root tabs</option>
@@ -263,6 +282,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Filter flow</label>
                 <Select value={plantForm.flow} onChange={update('flow')}>
+                  <option value="">Select</option>
                   <option value="low">Gentle</option>
                   <option value="medium">Medium</option>
                   <option value="high">Strong</option>
@@ -271,6 +291,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Plant goal</label>
                 <Select value={plantForm.plantGoal} onChange={update('plantGoal')}>
+                  <option value="">Select</option>
                   <option value="easy-green">Easy green plants</option>
                   <option value="carpet">Foreground carpet</option>
                   <option value="colorful">Colorful / red stems</option>
@@ -280,6 +301,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Water changes</label>
                 <Select value={plantForm.waterChange} onChange={update('waterChange')}>
+                  <option value="">Select</option>
                   <option value="weekly">Every week</option>
                   <option value="biweekly">Every 2 weeks</option>
                   <option value="monthly">Once a month</option>
@@ -288,6 +310,7 @@ function PlantedTankAssistant() {
               <div className="form-group">
                 <label className="form-label">Budget</label>
                 <Select value={plantForm.budget} onChange={update('budget')}>
+                  <option value="">Select</option>
                   <option value="low">Keep it cheap</option>
                   <option value="medium">Normal</option>
                   <option value="high">Premium plants OK</option>

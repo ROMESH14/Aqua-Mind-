@@ -2,45 +2,67 @@ const maintenanceModel = require('../models/maintenanceModel');
 const tankModel = require('../models/tankModel');
 const alertModel = require('../models/alertModel');
 
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
 function dueDateKey(value) {
   if (!value) return null;
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-  const date = new Date(value);
+  if (typeof value === 'string') {
+    const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const us = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (us) return `${us[3]}-${pad2(us[1])}-${pad2(us[2])}`;
+  }
+  const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+  const utcMidnight = date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0;
+  if (utcMidnight) {
+    return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+  }
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function field(row, ...keys) {
+  for (const key of keys) {
+    if (row?.[key] != null && row[key] !== '') return row[key];
+  }
+  return undefined;
 }
 
 function formatTask(task) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const key = dueDateKey(task.DueDate);
-  const due = key ? new Date(`${key}T00:00:00`) : new Date(task.DueDate);
-  due.setHours(0, 0, 0, 0);
+  const key = dueDateKey(field(task, 'DueDate', 'duedate', 'dueDate'));
+  const due = key ? new Date(`${key}T00:00:00`) : new Date(NaN);
+  if (!Number.isNaN(due.getTime())) due.setHours(0, 0, 0, 0);
 
   let dueType = 'soon';
-  let dueLabel = task.DueTime || due.toLocaleDateString('en-GB', { weekday: 'short' });
+  let dueLabel = field(task, 'DueTime', 'duetime') || (!Number.isNaN(due.getTime())
+    ? due.toLocaleDateString('en-GB', { weekday: 'short' })
+    : 'Upcoming');
 
-  if (task.IsCompleted) {
+  if (field(task, 'IsCompleted', 'iscompleted')) {
     dueType = 'ok';
     dueLabel = 'Done';
-  } else if (due < today) {
+  } else if (!Number.isNaN(due.getTime()) && due < today) {
     dueType = 'today';
     dueLabel = 'Overdue';
-  } else if (due.getTime() === today.getTime()) {
+  } else if (!Number.isNaN(due.getTime()) && due.getTime() === today.getTime()) {
     dueType = 'today';
-    dueLabel = task.DueTime || 'Today';
+    dueLabel = field(task, 'DueTime', 'duetime') || 'Today';
   }
 
   return {
-    id: task.TaskID,
-    name: task.TaskName,
-    tank: task.TankName || 'All tanks',
-    tankId: task.TankID,
+    id: field(task, 'TaskID', 'taskid'),
+    name: field(task, 'TaskName', 'taskname'),
+    tank: field(task, 'TankName', 'tankname') || 'All tanks',
+    tankId: field(task, 'TankID', 'tankid'),
     due: dueLabel,
     dueType,
-    done: !!task.IsCompleted,
+    done: !!field(task, 'IsCompleted', 'iscompleted'),
     dueDate: key,
-    dueTime: task.DueTime,
+    dueTime: field(task, 'DueTime', 'duetime') || null,
   };
 }
 
@@ -73,7 +95,10 @@ async function createTask(req, res) {
   }
 
   const task = await maintenanceModel.createTask(req.user.id, {
-    taskName, dueDate, dueTime, tankId,
+    taskName,
+    dueDate: dueDateKey(dueDate) || dueDate,
+    dueTime,
+    tankId,
   });
 
   const dueAt = maintenanceModel.parseDueAt({ DueDate: dueDate, DueTime: dueTime });

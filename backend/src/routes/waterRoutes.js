@@ -13,5 +13,6 @@ router.get('/tanks/:tankId/assessment', asyncHandler(waterController.getAssessme
 router.post('/tanks/:tankId/scan', asyncHandler(waterController.scanReading));
 router.post('/tanks/:tankId/scan-thermometer', asyncHandler(waterController.scanThermometer));
 router.post('/tanks/:tankId/readings', asyncHandler(waterController.logReading));
+router.delete('/tanks/:tankId/readings/:readingId', asyncHandler(waterController.deleteReading));
 
 module.exports = router;

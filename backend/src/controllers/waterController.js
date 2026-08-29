@@ -99,7 +99,7 @@ function formatReading(reading, ranges, issues) {
 function formatHistoryRow(reading) {
   const evaluation = evaluateReading(reading);
   return {
-    id: reading.ReadingID,
+    id: reading.ReadingID ?? reading.readingid ?? reading.readingId,
     date: reading.RecordedAt,
     ph: reading.pH,
     temp: reading.Temperature,
@@ -181,6 +181,15 @@ async function getHistory(req, res) {
 
   const history = await waterModel.getHistoryByTank(req.params.tankId);
   res.json(history.map(formatHistoryRow));
+}
+
+async function deleteReading(req, res) {
+  const tank = await tankModel.findById(req.params.tankId, req.user.id);
+  if (!tank) return res.status(404).json({ message: 'Tank not found' });
+
+  const deleted = await waterModel.deleteReading(req.params.readingId, req.params.tankId);
+  if (!deleted) return res.status(404).json({ message: 'Reading not found' });
+  res.json({ message: 'Reading deleted' });
 }
 
 async function getAssessment(req, res) {
@@ -308,6 +317,7 @@ async function logReading(req, res) {
 module.exports = {
   getLatest,
   getHistory,
+  deleteReading,
   getAssessment,
   getModel,
   scanReading,

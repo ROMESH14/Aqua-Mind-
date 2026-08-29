@@ -53,7 +53,8 @@ function xTicks(coords) {
 
 function TemperatureChart({ trends = [] }) {
   const [hover, setHover] = useState(null);
-  const series = trends.find((item) => item.points?.length > 0);
+  const list = Array.isArray(trends) ? trends : [];
+  const series = list.find((item) => Array.isArray(item?.points) && item.points.length > 0);
   if (!series) return null;
 
   const points = series.points

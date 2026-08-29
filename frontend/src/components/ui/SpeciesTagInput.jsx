@@ -14,9 +14,10 @@ function SpeciesTagInput({
   const [open, setOpen] = useState(false);
   const inputRef = useRef(null);
 
+  const list = Array.isArray(items) ? items : [];
   const selectedNames = useMemo(
-    () => new Set(items.map((item) => item.name.toLowerCase())),
-    [items]
+    () => new Set(list.map((item) => String(item?.name || item || '').toLowerCase()).filter(Boolean)),
+    [list]
   );
 
   const matches = useMemo(() => {
@@ -32,14 +33,14 @@ function SpeciesTagInput({
   const add = (name) => {
     const trimmed = String(name || query).trim();
     if (!trimmed || selectedNames.has(trimmed.toLowerCase())) return;
-    onChange([...items, { name: trimmed, count: Math.max(1, parseInt(count, 10) || 1) }]);
+    onChange([...list, { name: trimmed, count: Math.max(1, parseInt(count, 10) || 1) }]);
     setQuery('');
     setCount(1);
     setOpen(false);
     inputRef.current?.focus();
   };
 
-  const remove = (name) => onChange(items.filter((item) => item.name !== name));
+  const remove = (name) => onChange(list.filter((item) => (item?.name || item) !== name));
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
@@ -92,7 +93,7 @@ function SpeciesTagInput({
           </ul>
         )}
       </div>
-      {items.length === 0 && unusedQuick.length > 0 && (
+      {list.length === 0 && unusedQuick.length > 0 && (
         <div className="species-quick">
           {unusedQuick.map((name) => (
             <button key={name} type="button" className="species-quick-chip" onClick={() => add(name)}>
@@ -101,14 +102,18 @@ function SpeciesTagInput({
           ))}
         </div>
       )}
-      {items.length > 0 && (
+      {list.length > 0 && (
         <div className="species-chips">
-          {items.map((item) => (
-            <span key={item.name} className="species-chip">
-              {item.name}{item.count > 1 ? ` ×${item.count}` : ''}
-              <button type="button" aria-label={`Remove ${item.name}`} onClick={() => remove(item.name)}>×</button>
-            </span>
-          ))}
+          {list.map((item, index) => {
+            const name = item?.name || item;
+            const qty = Number(item?.count) || 1;
+            return (
+              <span key={`${name}-${index}`} className="species-chip">
+                {name}{qty > 1 ? ` ×${qty}` : ''}
+                <button type="button" aria-label={`Remove ${name}`} onClick={() => remove(name)}>×</button>
+              </span>
+            );
+          })}
         </div>
       )}
     </div>

@@ -9,21 +9,25 @@ import { aiService } from '../services/aiService';
 import { planService } from '../services/planService';
 
 const DEFAULT_FORM = {
-  tankType: 'Planted',
-  volumeLiters: '60',
-  tankStyle: 'glass',
-  tankShape: 'rectangle',
-  theme: 'planted',
-  lighting: 'medium',
-  livestock: 'mixed',
-  substrate: 'aqua-soil',
-  hardscape: 'none',
-  co2: 'low',
-  experience: 'beginner',
-  ph: '7.0',
-  temperature: '25',
-  background: 'black',
+  tankType: '',
+  volumeLiters: '',
+  tankStyle: '',
+  tankShape: '',
+  theme: '',
+  lighting: '',
+  livestock: '',
+  substrate: '',
+  hardscape: '',
+  co2: '',
+  experience: '',
+  ph: '',
+  temperature: '',
+  background: '',
 };
+
+function formIncomplete(form) {
+  return Object.values(form).some((value) => String(value ?? '').trim() === '');
+}
 
 const SUBSTRATE_LABEL = { 'aqua-soil': 'Aqua soil', sand: 'Sand', gravel: 'Gravel' };
 const HARDSCAPE_LABEL = { none: 'No hardscape', wood: 'Driftwood', rock: 'Rocks', 'wood-rock': 'Wood and rocks' };
@@ -113,6 +117,10 @@ function TankDesigner() {
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
   const runDesign = async () => {
+    if (formIncomplete(form)) {
+      setError('Fill every field so the layout matches the tank you want.');
+      return;
+    }
     setAnalyzing(true);
     setError('');
     try {
@@ -254,6 +262,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">Tank type</label>
                   <Select value={form.tankType} onChange={update('tankType')}>
+                    <option value="">Select</option>
                     <option value="Community">Community</option>
                     <option value="Planted">Planted</option>
                     <option value="Monster Fish">Monster Fish</option>
@@ -261,11 +270,12 @@ function TankDesigner() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Volume (L)</label>
-                  <input className="form-input" type="number" min="10" value={form.volumeLiters} onChange={update('volumeLiters')} />
+                  <input className="form-input" type="number" min="10" placeholder="e.g. 60" value={form.volumeLiters} onChange={update('volumeLiters')} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Tank style</label>
                   <Select value={form.tankStyle} onChange={update('tankStyle')}>
+                    <option value="">Select</option>
                     <option value="glass">Glass</option>
                     <option value="cement">Cement / concrete</option>
                   </Select>
@@ -273,6 +283,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">Tank shape</label>
                   <Select value={form.tankShape} onChange={update('tankShape')}>
+                    <option value="">Select</option>
                     <option value="rectangle">Rectangle</option>
                     <option value="cube">Cube</option>
                     <option value="bowfront">Bowfront</option>
@@ -283,6 +294,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">Theme</label>
                   <Select value={form.theme} onChange={update('theme')}>
+                    <option value="">Select</option>
                     <option value="community">Community</option>
                     <option value="planted">Planted</option>
                     <option value="nature">Nature</option>
@@ -292,6 +304,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">Lighting</label>
                   <Select value={form.lighting} onChange={update('lighting')}>
+                    <option value="">Select</option>
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
                     <option value="high">High</option>
@@ -300,6 +313,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">Livestock</label>
                   <Select value={form.livestock} onChange={update('livestock')}>
+                    <option value="">Select</option>
                     <option value="mixed">Mixed community</option>
                     <option value="schooling">Schooling</option>
                     <option value="predator">Predator / monster</option>
@@ -308,6 +322,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">Your experience</label>
                   <Select value={form.experience} onChange={update('experience')}>
+                    <option value="">Select</option>
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Some experience</option>
                     <option value="advanced">Advanced</option>
@@ -316,6 +331,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">Substrate</label>
                   <Select value={form.substrate} onChange={update('substrate')}>
+                    <option value="">Select</option>
                     <option value="aqua-soil">Aqua soil</option>
                     <option value="sand">Sand</option>
                     <option value="gravel">Gravel</option>
@@ -324,6 +340,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">Hardscape</label>
                   <Select value={form.hardscape} onChange={update('hardscape')}>
+                    <option value="">Select</option>
                     <option value="none">None yet</option>
                     <option value="wood">Driftwood</option>
                     <option value="rock">Rocks</option>
@@ -333,6 +350,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">CO₂</label>
                   <Select value={form.co2} onChange={update('co2')}>
+                    <option value="">Select</option>
                     <option value="none">None</option>
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -342,6 +360,7 @@ function TankDesigner() {
                 <div className="form-group">
                   <label className="form-label">Background</label>
                   <Select value={form.background} onChange={update('background')}>
+                    <option value="">Select</option>
                     <option value="plain">Plain / none</option>
                     <option value="black">Black film</option>
                     <option value="image">Printed scene</option>
@@ -349,11 +368,11 @@ function TankDesigner() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Target pH</label>
-                  <input className="form-input" type="number" step="0.1" value={form.ph} onChange={update('ph')} />
+                  <input className="form-input" type="number" step="0.1" placeholder="e.g. 6.8" value={form.ph} onChange={update('ph')} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Target temp (°C)</label>
-                  <input className="form-input" type="number" step="0.1" value={form.temperature} onChange={update('temperature')} />
+                  <input className="form-input" type="number" step="0.1" placeholder="e.g. 25" value={form.temperature} onChange={update('temperature')} />
                 </div>
               </div>
               <div className="ai-form-actions">

@@ -69,34 +69,37 @@ async function getDashboard(req, res) {
     },
   ];
 
-  const formattedTasks = tasks.slice(0, 5).map((t) => {
+  const formattedTasks = (tasks || []).slice(0, 5).map((t) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const due = new Date(t.DueDate);
-    due.setHours(0, 0, 0, 0);
+    const due = t.DueDate || t.duedate ? new Date(t.DueDate || t.duedate) : new Date(NaN);
+    if (!Number.isNaN(due.getTime())) due.setHours(0, 0, 0, 0);
 
     let dueType = 'soon';
-    let dueLabel = t.DueTime || 'Upcoming';
-    if (t.IsCompleted) { dueType = 'ok'; dueLabel = 'Done'; }
-    else if (due < today) { dueType = 'today'; dueLabel = 'Overdue'; }
-    else if (due.getTime() === today.getTime()) { dueType = 'today'; dueLabel = 'Today'; }
+    let dueLabel = t.DueTime || t.duetime || 'Upcoming';
+    if (t.IsCompleted || t.iscompleted) { dueType = 'ok'; dueLabel = 'Done'; }
+    else if (!Number.isNaN(due.getTime()) && due < today) { dueType = 'today'; dueLabel = 'Overdue'; }
+    else if (!Number.isNaN(due.getTime()) && due.getTime() === today.getTime()) { dueType = 'today'; dueLabel = 'Today'; }
 
     return {
-      id: t.TaskID,
-      name: t.TaskName,
-      tank: t.TankName || 'All tanks',
+      id: t.TaskID || t.taskid,
+      name: t.TaskName || t.taskname,
+      tank: t.TankName || t.tankname || 'All tanks',
       due: dueLabel,
       dueType,
-      done: !!t.IsCompleted,
+      done: !!(t.IsCompleted || t.iscompleted),
     };
   });
 
   const tanks = {};
-  tempTrend.forEach((row) => {
-    if (!tanks[row.TankID]) tanks[row.TankID] = { name: row.TankName, points: [] };
-    tanks[row.TankID].points.push({
-      temperature: row.Temperature,
-      recordedAt: row.RecordedAt,
+  (tempTrend || []).forEach((row) => {
+    const tankId = row.TankID ?? row.tankid ?? row.tankId;
+    const name = row.TankName ?? row.tankname ?? row.tankName;
+    if (tankId == null) return;
+    if (!tanks[tankId]) tanks[tankId] = { name, points: [] };
+    tanks[tankId].points.push({
+      temperature: row.Temperature ?? row.temperature,
+      recordedAt: row.RecordedAt ?? row.recordedat ?? row.recordedAt,
     });
   });
 
@@ -105,7 +108,7 @@ async function getDashboard(req, res) {
     tankCount: Number(tankCount) || 0,
     totalFish: Number(totalFish) || 0,
     taskCount: Number(taskCount) || 0,
-    alerts: alerts.map(formatAlert),
+    alerts: (alerts || []).map(formatAlert),
     tasks: formattedTasks,
     temperatureTrend: Object.values(tanks),
   });

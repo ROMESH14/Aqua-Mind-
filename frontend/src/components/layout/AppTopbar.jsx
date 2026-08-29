@@ -77,11 +77,15 @@ function NotifyBell() {
 
   useEffect(() => {
     if (!open) return undefined;
+    const closeInbox = () => {
+      notify.markInboxRead?.();
+      setOpen(false);
+    };
     const onDoc = (event) => {
-      if (!wrapRef.current?.contains(event.target)) setOpen(false);
+      if (!wrapRef.current?.contains(event.target)) closeInbox();
     };
     const onKey = (event) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') closeInbox();
     };
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
@@ -95,6 +99,7 @@ function NotifyBell() {
 
   const toggle = async () => {
     const next = !open;
+    if (!next) await notify.markInboxRead?.();
     setOpen(next);
     if (next) await notify.openInbox();
   };
@@ -118,7 +123,14 @@ function NotifyBell() {
             <ul>
               {notify.items.map((item) => (
                 <li key={item.id || item.tag || item.title}>
-                  <Link to={item.href || '/dashboard'} onClick={() => setOpen(false)}>
+                  <Link
+                    to={item.href || '/dashboard'}
+                    className={item.read ? 'is-read' : 'is-unread'}
+                    onClick={async () => {
+                      await notify.markInboxRead?.();
+                      setOpen(false);
+                    }}
+                  >
                     <strong>{item.title}</strong>
                     {item.detail && <span>{item.detail}</span>}
                     {item.time && <span>{item.time}</span>}

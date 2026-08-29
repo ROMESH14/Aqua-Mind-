@@ -8,18 +8,21 @@ import { aiService } from '../services/aiService';
 import { planService } from '../services/planService';
 
 const DEFAULT_FISH = {
-  tankType: 'Community',
-  volumeLiters: '60',
-  experience: 'beginner',
-  temperament: 'peaceful',
-  planted: 'yes',
-  groupSize: 'school',
-  ph: '7.0',
-  temperature: '25',
-  ammonia: '0',
-  nitrite: '0',
-  nitrate: '10',
+  tankType: '',
+  volumeLiters: '',
+  experience: '',
+  temperament: '',
+  planted: '',
+  groupSize: '',
+  ph: '',
+  temperature: '',
+  ammonia: '',
+  nitrate: '',
 };
+
+function formIncomplete(form) {
+  return Object.values(form).some((value) => String(value ?? '').trim() === '');
+}
 
 function SpeciesAdvisor() {
   const [fishForm, setFishForm] = useState(DEFAULT_FISH);
@@ -47,10 +50,14 @@ function SpeciesAdvisor() {
   const update = (field) => (e) => setFishForm({ ...fishForm, [field]: e.target.value });
 
   const runAnalysis = async () => {
+    if (formIncomplete(fishForm)) {
+      setError('Fill every field so the species list matches your tank.');
+      return;
+    }
     setAnalyzing(true);
     setError('');
     try {
-      const data = await aiService.analyzeFish(fishForm);
+      const data = await aiService.analyzeFish({ ...fishForm, nitrite: fishForm.nitrite || '0' });
       setResult({ ...data, recommendations: enrichFishList(data.recommendations || []) });
       setSavedId(null);
       setShowResults(true);
@@ -142,6 +149,7 @@ function SpeciesAdvisor() {
                 <div className="form-group">
                   <label className="form-label">Tank type</label>
                   <Select value={fishForm.tankType} onChange={update('tankType')}>
+                    <option value="">Select</option>
                     <option value="Community">Community</option>
                     <option value="Planted">Planted</option>
                     <option value="Monster Fish">Monster Fish</option>
@@ -149,11 +157,12 @@ function SpeciesAdvisor() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Volume (L)</label>
-                  <input className="form-input" type="number" min="10" value={fishForm.volumeLiters} onChange={update('volumeLiters')} />
+                  <input className="form-input" type="number" min="10" placeholder="e.g. 60" value={fishForm.volumeLiters} onChange={update('volumeLiters')} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Your experience</label>
                   <Select value={fishForm.experience} onChange={update('experience')}>
+                    <option value="">Select</option>
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Some experience</option>
                     <option value="advanced">Advanced</option>
@@ -162,6 +171,7 @@ function SpeciesAdvisor() {
                 <div className="form-group">
                   <label className="form-label">Temperament</label>
                   <Select value={fishForm.temperament} onChange={update('temperament')}>
+                    <option value="">Select</option>
                     <option value="peaceful">Peaceful</option>
                     <option value="semi">Semi-aggressive</option>
                     <option value="predator">Predator</option>
@@ -170,6 +180,7 @@ function SpeciesAdvisor() {
                 <div className="form-group">
                   <label className="form-label">Planted tank</label>
                   <Select value={fishForm.planted} onChange={update('planted')}>
+                    <option value="">Select</option>
                     <option value="yes">Yes, planted</option>
                     <option value="some">A few plants</option>
                     <option value="no">No plants</option>
@@ -178,6 +189,7 @@ function SpeciesAdvisor() {
                 <div className="form-group">
                   <label className="form-label">Group style</label>
                   <Select value={fishForm.groupSize} onChange={update('groupSize')}>
+                    <option value="">Select</option>
                     <option value="school">Schooling fish</option>
                     <option value="pairs">Pairs / small groups</option>
                     <option value="centerpiece">One centerpiece</option>
@@ -185,19 +197,19 @@ function SpeciesAdvisor() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">pH</label>
-                  <input className="form-input" type="number" step="0.1" value={fishForm.ph} onChange={update('ph')} />
+                  <input className="form-input" type="number" step="0.1" placeholder="e.g. 7.0" value={fishForm.ph} onChange={update('ph')} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Temp (°C)</label>
-                  <input className="form-input" type="number" step="0.1" value={fishForm.temperature} onChange={update('temperature')} />
+                  <input className="form-input" type="number" step="0.1" placeholder="e.g. 25" value={fishForm.temperature} onChange={update('temperature')} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Ammonia (ppm)</label>
-                  <input className="form-input" type="number" step="0.01" value={fishForm.ammonia} onChange={update('ammonia')} />
+                  <input className="form-input" type="number" step="0.01" placeholder="e.g. 0" value={fishForm.ammonia} onChange={update('ammonia')} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Nitrate (ppm)</label>
-                  <input className="form-input" type="number" step="0.1" value={fishForm.nitrate} onChange={update('nitrate')} />
+                  <input className="form-input" type="number" step="0.1" placeholder="e.g. 10" value={fishForm.nitrate} onChange={update('nitrate')} />
                 </div>
               </div>
               <div className="ai-form-actions">

@@ -98,7 +98,8 @@ async function countDueToday(userId) {
     return conn.db.prepare(`SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = ? AND IsCompleted = 0 AND DueDate <= date('now')`).get(userId).count;
   }
   if (isMysql(conn)) {
-    return queryOne(conn, `SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = ? AND IsCompleted = 0 AND DueDate <= CURDATE()`, [userId]).count;
+    const row = await queryOne(conn, `SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = ? AND IsCompleted = 0 AND DueDate <= CURDATE()`, [userId]);
+    return Number(row?.count) || 0;
   }
   const result = await conn.pool.request().input('userId', conn.sql.Int, userId)
     .query(`SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = @userId AND IsCompleted = 0 AND DueDate <= CAST(GETDATE() AS DATE)`);
@@ -125,7 +126,8 @@ async function countOverdue(userId) {
     return conn.db.prepare(`SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = ? AND IsCompleted = 0 AND DueDate < date('now')`).get(userId).count;
   }
   if (isMysql(conn)) {
-    return queryOne(conn, `SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = ? AND IsCompleted = 0 AND DueDate < CURDATE()`, [userId]).count;
+    const row = await queryOne(conn, `SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = ? AND IsCompleted = 0 AND DueDate < CURDATE()`, [userId]);
+    return Number(row?.count) || 0;
   }
   const result = await conn.pool.request().input('userId', conn.sql.Int, userId)
     .query(`SELECT COUNT(*) AS count FROM MaintenanceTasks WHERE UserID = @userId AND IsCompleted = 0 AND DueDate < CAST(GETDATE() AS DATE)`);

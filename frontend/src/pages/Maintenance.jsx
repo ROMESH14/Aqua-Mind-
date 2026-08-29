@@ -40,22 +40,20 @@ function Maintenance() {
         maintenanceService.getLogs(),
         tankService.getAll(),
       ]);
-      setTodayTasks(today);
-      setAllTasks(all);
-      setLogs(logData);
-      setTanks(tankData);
-      setOverdue(today.filter((t) => t.due === 'Overdue').length);
+      const todayList = Array.isArray(today) ? today : [];
+      const allList = Array.isArray(all) ? all : [];
+      setTodayTasks(todayList);
+      setAllTasks(allList);
+      setLogs(Array.isArray(logData) ? logData : []);
+      setTanks(Array.isArray(tankData) ? tankData : []);
+      setOverdue(todayList.filter((t) => t.due === 'Overdue').length);
     } catch (err) {
       setError(err.message);
     }
   };
 
   const todayKey = dateKey(new Date());
-  const monthPrefix = `${selectedDay.getFullYear()}-${String(selectedDay.getMonth() + 1).padStart(2, '0')}`;
   const monthLabel = selectedDay.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-  const monthTasks = allTasks
-    .filter((task) => dateKey(task.dueDate).startsWith(monthPrefix))
-    .sort((a, b) => dateKey(a.dueDate).localeCompare(dateKey(b.dueDate)) || String(a.dueTime || '').localeCompare(String(b.dueTime || '')));
   const upcomingTasks = allTasks
     .filter((task) => !task.done && dateKey(task.dueDate) > todayKey)
     .slice(0, 8);
@@ -72,9 +70,14 @@ function Maintenance() {
         tankId: form.tankId ? parseInt(form.tankId, 10) : null,
       });
       if (saved.notify) notify?.announce(saved.notify);
+      if (saved.dueDate) {
+        const [year, month, day] = String(saved.dueDate).split('-').map(Number);
+        if (year && month && day) setSelectedDay(new Date(year, month - 1, day));
+      }
       setShowModal(false);
       setForm({ taskName: '', dueDate: '', dueTime: '', tankId: '' });
-      load();
+      setError('');
+      await load();
     } catch (err) {
       setError(err.message);
     }
@@ -135,28 +138,6 @@ function Maintenance() {
           <div className="card">
             <SectionHeader icon="📆" iconVariant="light" title={monthLabel} />
             <TaskCalendar tasks={allTasks} selected={selectedDay} onSelect={setSelectedDay} />
-            <div className="task-cal-month">
-              <p className="task-cal-month-title">
-                {monthTasks.length
-                  ? `${monthTasks.length} task${monthTasks.length === 1 ? '' : 's'} in ${monthLabel}`
-                  : `No tasks scheduled in ${monthLabel}`}
-              </p>
-              {monthTasks.length > 0 && (
-                <div className="tasks-list">
-                  {monthTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className={dateKey(task.dueDate) === dateKey(selectedDay) ? 'is-day-selected' : ''}
-                    >
-                      <TaskItem {...task} initialDone={task.done} onToggle={() => handleToggle(task.id)} />
-                    </div>
-                  ))}
-                </div>
-              )}
-              {!monthTasks.length && (
-                <p className="task-cal-empty">Add a task with a date in this month to see it on the calendar.</p>
-              )}
-            </div>
           </div>
 
           <div className="card maintenance-full">

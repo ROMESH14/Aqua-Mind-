@@ -71,6 +71,19 @@ async function getTemperatureTrend(userId, days = 7) {
   return result.recordset;
 }
 
+async function deleteReading(readingId, tankId) {
+  const conn = await getPool();
+  if (isSqlite(conn) || isMysql(conn)) {
+    const info = await execute(conn, 'DELETE FROM WaterReadings WHERE ReadingID = ? AND TankID = ?', [readingId, tankId]);
+    return (info.changes ?? info.affectedRows) > 0;
+  }
+  const result = await conn.pool.request()
+    .input('readingId', conn.sql.Int, readingId)
+    .input('tankId', conn.sql.Int, tankId)
+    .query('DELETE FROM WaterReadings WHERE ReadingID = @readingId AND TankID = @tankId');
+  return result.rowsAffected[0] > 0;
+}
+
 async function getAvgPHByUser(userId) {
   const conn = await getPool();
   if (isSqlite(conn)) {
@@ -92,4 +105,4 @@ async function getAvgPHByUser(userId) {
   return result.recordset[0]?.avgPH;
 }
 
-module.exports = { createReading, getLatestByTank, getHistoryByTank, getTemperatureTrend, getAvgPHByUser };
+module.exports = { createReading, getLatestByTank, getHistoryByTank, deleteReading, getTemperatureTrend, getAvgPHByUser };

@@ -26,6 +26,44 @@ function SpeciesRow({ item, kind }) {
   );
 }
 
+const SPECIES_PREVIEW = 3;
+
+function LifeSection({ title, items, total, kind, empty }) {
+  const [expanded, setExpanded] = useState(false);
+  const list = Array.isArray(items) ? items : [];
+  const hasMore = list.length > SPECIES_PREVIEW;
+  const shown = hasMore && !expanded ? list.slice(0, SPECIES_PREVIEW) : list;
+
+  return (
+    <section className={`tank-life${kind === 'plant' ? ' tank-life--plants' : ''}`}>
+      <header className="tank-life-head">
+        <span>{title}</span>
+        <em>{total || 0}</em>
+      </header>
+      {list.length ? (
+        <>
+          <div className="tank-life-list">
+            {shown.map((item, index) => (
+              <SpeciesRow key={`${item.name}-${index}`} item={item} kind={kind} />
+            ))}
+          </div>
+          {hasMore && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm tank-life-more"
+              onClick={() => setExpanded((open) => !open)}
+            >
+              {expanded ? 'Show less' : `View all ${list.length}`}
+            </button>
+          )}
+        </>
+      ) : (
+        <p className="tank-life-empty">{empty}</p>
+      )}
+    </section>
+  );
+}
+
 function TankCard({ tank, onEdit, onDelete }) {
   return (
     <article className="tank-card">
@@ -110,37 +148,20 @@ function TankCard({ tank, onEdit, onDelete }) {
       </div>
 
       <div className="tank-info">
-        <section className="tank-life">
-          <header className="tank-life-head">
-            <span>Fish in this tank</span>
-            <em>{tank.fishTotal || 0}</em>
-          </header>
-          {tank.fishNames?.length ? (
-            <div className="tank-life-list">
-              {tank.fishNames.map((item) => (
-                <SpeciesRow key={item.name} item={item} kind="fish" />
-              ))}
-            </div>
-          ) : (
-            <p className="tank-life-empty">No fish added yet</p>
-          )}
-        </section>
-
-        <section className="tank-life tank-life--plants">
-          <header className="tank-life-head">
-            <span>Plants in this tank</span>
-            <em>{tank.plantTotal || 0}</em>
-          </header>
-          {tank.plantNames?.length ? (
-            <div className="tank-life-list">
-              {tank.plantNames.map((item) => (
-                <SpeciesRow key={item.name} item={item} kind="plant" />
-              ))}
-            </div>
-          ) : (
-            <p className="tank-life-empty">No plants added yet</p>
-          )}
-        </section>
+        <LifeSection
+          title="Fish in this tank"
+          items={tank.fishNames}
+          total={tank.fishTotal}
+          kind="fish"
+          empty="No fish added yet"
+        />
+        <LifeSection
+          title="Plants in this tank"
+          items={tank.plantNames}
+          total={tank.plantTotal}
+          kind="plant"
+          empty="No plants added yet"
+        />
 
         {tank.hasReadings ? (
           <div className="tank-readings">

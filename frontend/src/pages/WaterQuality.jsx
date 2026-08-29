@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Select from '../components/ui/Select';
 import EmptyState from '../components/ui/EmptyState';
+import Modal from '../components/ui/Modal';
 import PageHero from '../components/ui/PageHero';
 import { tankService } from '../services/tankService';
 import { waterService } from '../services/waterService';
@@ -153,6 +154,8 @@ function WaterQuality() {
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState([]);
   const [draftId, setDraftId] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [formOpen, setFormOpen] = useState(true);
   const fileRef = useRef(null);
   const thermoRef = useRef(null);
@@ -280,6 +283,25 @@ function WaterQuality() {
       setError(err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const confirmDeleteReading = async () => {
+    if (!tank?.id || !pendingDelete?.id) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await waterService.removeReading(tank.id, pendingDelete.id);
+      if (draftId === pendingDelete.id) {
+        setDraftId(null);
+        setForm(EMPTY_FORM);
+      }
+      setPendingDelete(null);
+      await loadTankData(tank.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -527,7 +549,7 @@ function WaterQuality() {
               <div className="wq-history-head">
                 <p className="wq-tankbar-kicker">Reading history</p>
                 <h2>Past tests</h2>
-                <p>Click a row to load it as a draft in the form.</p>
+                <p>Click a row to load it as a draft. Use delete to remove a past test.</p>
               </div>
               {history.length ? (
                 <div className="table-wrap wq-history-wrap">
@@ -542,6 +564,7 @@ function WaterQuality() {
                         <th>NO₃</th>
                         <th>O₂</th>
                         <th>Status</th>
+                        <th className="wq-history-del-col" aria-label="Delete" />
                       </tr>
                     </thead>
                     <tbody>
@@ -561,6 +584,20 @@ function WaterQuality() {
                           <td>
                             <span className={`log-badge ${row.status}`}>{historyStatusLabel(row.status)}</span>
                           </td>
+                          <td className="wq-history-del-col">
+                            <button
+                              type="button"
+                              className="wq-history-del"
+                              aria-label={`Delete test from ${fmtWhen(row.date)}`}
+                              title="Delete this test"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setPendingDelete(row);
+                              }}
+                            >
+                              −
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -571,6 +608,25 @@ function WaterQuality() {
               )}
             </section>
           </div>
+        )}
+
+        {pendingDelete && (
+          <Modal title="Delete past test" onClose={() => !deleting && setPendingDelete(null)}>
+            <div className="confirm-body">
+              <p className="confirm-text">
+                Remove the test from <strong>{fmtWhen(pendingDelete.date)}</strong>?
+              </p>
+              <p className="confirm-hint">This reading will be removed from history. This cannot be undone.</p>
+              <div className="confirm-actions">
+                <button type="button" className="btn btn-ghost" disabled={deleting} onClick={() => setPendingDelete(null)}>
+                  Keep test
+                </button>
+                <button type="button" className="btn btn-danger" disabled={deleting} onClick={confirmDeleteReading}>
+                  {deleting ? 'Deleting...' : 'Yes, delete'}
+                </button>
+              </div>
+            </div>
+          </Modal>
         )}
       </div>
     </div>

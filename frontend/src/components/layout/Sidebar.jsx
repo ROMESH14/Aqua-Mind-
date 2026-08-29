@@ -20,15 +20,30 @@ const navItems = [
   { path: '/help', label: 'Help', icon: '?' },
 ];
 
+function useIsMobile(query = '(max-width: 768px)') {
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const onChange = () => setMobile(media.matches);
+    onChange();
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, [query]);
+
+  return mobile;
+}
+
 function Sidebar() {
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const isMobile = useIsMobile();
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const plannerActive = plannerChildren.some((item) => location.pathname.startsWith(item.path));
   const [plannerOpen, setPlannerOpen] = useState(plannerActive);
-  const expanded = hovered || pinned;
+  const expanded = !isMobile && (hovered || pinned);
 
   useEffect(() => {
     document.body.classList.toggle('sidebar-expanded', expanded);
