@@ -31,7 +31,7 @@ const GUIDES = [
     to: '/water',
     points: [
       'Enter pH, temp, ammonia (NH₃), nitrite (NO₂), nitrate (NO₃), and oxygen (O₂).',
-      'You can drop a test-kit photo to fill the form.',
+      'Drop a test-kit photo for the pads, or a thermometer photo to fill Temp °C.',
       'Save to get a score and what to do next.',
     ],
   },

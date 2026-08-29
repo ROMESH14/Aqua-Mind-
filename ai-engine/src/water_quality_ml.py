@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -576,5 +577,117 @@ def scan_test_image(image_b64):
         'nitrate': float(round(nitrate, 1)),
         'dissolvedO2': dissolved,
         'confidence': 0.72,
-        'note': 'Colour pads give pH, ammonia, nitrite and nitrate. Type temperature from a thermometer.',
+        'note': 'Colour pads give pH, ammonia, nitrite and nitrate. Use the thermometer tool for Temp °C.',
+    }
+
+
+def parse_thermometer_text(text):
+    """Pull a tank temperature in °C from OCR or label text."""
+    if not text:
+        return None
+    raw = str(text).replace(',', '.')
+    celsius = [float(n) for n in re.findall(r'(\d{1,2}(?:\.\d)?)\s*°?\s*C\b', raw, re.I)]
+    fahrenheit = [float(n) for n in re.findall(r'(\d{2,3}(?:\.\d)?)\s*°?\s*F\b', raw, re.I)]
+    bare = [float(n) for n in re.findall(r'\b(\d{1,2}(?:\.\d)?)\b', raw)]
+
+    for value in celsius:
+        if 5 <= value <= 42:
+            return round(value, 1)
+    for value in fahrenheit:
+        c_value = (value - 32) * 5 / 9
+        if 5 <= c_value <= 42:
+            return round(c_value, 1)
+    preferred = [value for value in bare if 18 <= value <= 32]
+    if preferred:
+        return round(preferred[0], 1)
+    wide = [value for value in bare if 5 <= value <= 42]
+    if wide:
+        return round(wide[0], 1)
+    return None
+
+
+def analog_temp_from_image(arr):
+    """Read a floating analog thermometer: liquid column on a 0–50°C scale."""
+    height, width = arr.shape[:2]
+    y1, y2 = int(height * 0.12), int(height * 0.90)
+    x1, x2 = int(width * 0.30), int(width * 0.70)
+    roi = arr[y1:y2, x1:x2]
+    if roi.size == 0:
+        return None
+
+    red = roi[:, :, 0].astype(np.int16)
+    green = roi[:, :, 1].astype(np.int16)
+    blue = roi[:, :, 2].astype(np.int16)
+    liquid = (
+        ((red > 125) & (red > green + 20) & (red > blue + 20))
+        | ((blue > 110) & (blue > red + 18) & (blue > green + 8) & (red < 140))
+    )
+    if int(liquid.sum()) < 30:
+        return None
+
+    col_hits = liquid.sum(axis=0)
+    peak = int(np.argmax(col_hits))
+    band = max(3, int(roi.shape[1] * 0.08))
+    xs = np.arange(roi.shape[1])
+    liquid &= (xs >= peak - band) & (xs <= peak + band)
+    rows = np.where(liquid.any(axis=1))[0]
+    if len(rows) < 8:
+        return None
+    if (rows.max() - rows.min()) < roi.shape[0] * 0.18:
+        return None
+
+    gray = roi.mean(axis=2)
+    contrast = gray.std(axis=1)
+    window = np.where(contrast > 10)[0]
+    if len(window) < 10:
+        window = np.where((contrast > 6) | liquid.any(axis=1))[0]
+    if len(window) < 10:
+        window = np.arange(roi.shape[0])
+
+    top, bottom = int(window.min()), int(window.max())
+    span = max(bottom - top, 1)
+    meniscus = int(rows.min())
+    value = ((bottom - meniscus) / span) * 50.0
+    if value < 5 or value > 42:
+        return None
+    return round(float(value), 1)
+
+
+def scan_thermometer_image(image_b64):
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError('Pillow is required for image scan. Run: pip install pillow') from exc
+
+    raw = image_b64
+    if isinstance(raw, str) and ',' in raw:
+        raw = raw.split(',', 1)[1]
+    data = base64.b64decode(raw)
+    image = Image.open(io.BytesIO(data)).convert('RGB')
+    image.thumbnail((900, 900))
+    arr = np.array(image)
+    temperature = None
+    source = 'none'
+
+    try:
+        import pytesseract
+        temperature = parse_thermometer_text(pytesseract.image_to_string(image))
+        if temperature is not None:
+            source = 'ocr'
+    except Exception:
+        temperature = None
+
+    if temperature is None:
+        temperature = analog_temp_from_image(arr)
+        if temperature is not None:
+            source = 'analog'
+
+    if temperature is None:
+        raise RuntimeError('Could not read a temperature. Type the number you see into Temp °C.')
+
+    return {
+        'temperature': temperature,
+        'confidence': 0.7 if source == 'ocr' else 0.55,
+        'source': source,
+        'note': f'Read {temperature}°C from the thermometer photo.',
     }

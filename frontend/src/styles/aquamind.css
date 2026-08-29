@@ -2181,6 +2181,13 @@ button.nav-tab {
 
 .wq-dropzone-inline { min-height: 88px; margin: 0; }
 
+.wq-tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
 .wq-readings {
   display: flex;
   height: 100%;
@@ -2660,10 +2667,28 @@ button.nav-tab {
   cursor: pointer;
   overflow: hidden;
   padding: 0;
+  position: relative;
 }
 
 .wq-dropzone img { width: 100%; max-height: 180px; object-fit: cover; display: block; }
 .wq-dropzone span { display: block; padding: 2.2rem 1rem; }
+
+.wq-drop-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  background: rgba(15, 45, 61, 0.82);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wq-drop-clear:hover { background: #0f2d3d; }
 
 .wq-form-grid {
   display: grid;
@@ -2677,7 +2702,8 @@ button.nav-tab {
   .wq-tankbar,
   .wq-form-grid,
   .wq-onepage,
-  .wq-live-grid { grid-template-columns: 1fr; flex-direction: column; }
+  .wq-live-grid,
+  .wq-tools { grid-template-columns: 1fr; flex-direction: column; }
   .wq-grid-compact { grid-template-columns: repeat(3, 1fr); }
   .profile-grid { grid-template-columns: 1fr; }
 }

@@ -6,12 +6,13 @@ import PageHero from '../components/ui/PageHero';
 import { tankService } from '../services/tankService';
 import { waterService } from '../services/waterService';
 import { useNotifications } from '../context/NotificationContext';
+import { readThermometerFromDataUrl } from '../utils/readThermometer';
 
 const EMPTY_FORM = { pH: '', temperature: '', ammonia: '', nitrite: '', nitrate: '', dissolvedO2: '' };
 
 const FIELDS = [
   { key: 'pH', label: 'pH', hint: '6.5–7.5', min: 0, max: 14, step: '0.1' },
-  { key: 'temperature', label: 'Temp °C', hint: 'Type from thermometer', min: 5, max: 42, step: '0.1' },
+  { key: 'temperature', label: 'Temp °C', hint: 'Type or scan photo', min: 5, max: 42, step: '0.1' },
   { key: 'ammonia', label: 'NH₃', hint: '0 ppm', min: 0, max: 10, step: '0.001' },
   { key: 'nitrite', label: 'NO₂', hint: '0 ppm', min: 0, max: 20, step: '0.001' },
   { key: 'nitrate', label: 'NO₃', hint: '<20', min: 0, max: 300, step: '0.1' },
@@ -146,12 +147,15 @@ function WaterQuality() {
   const [error, setError] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
   const [scanPreview, setScanPreview] = useState('');
+  const [thermoPreview, setThermoPreview] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [scanningTemp, setScanningTemp] = useState(false);
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState([]);
   const [draftId, setDraftId] = useState(null);
   const [formOpen, setFormOpen] = useState(true);
   const fileRef = useRef(null);
+  const thermoRef = useRef(null);
 
   const tank = tanks[selectedTank];
   const fishNames = namesOf(tank?.fishNames);
@@ -184,6 +188,7 @@ function WaterQuality() {
     setDraftId(null);
     setForm(EMPTY_FORM);
     setScanPreview('');
+    setThermoPreview('');
     setFormOpen(true);
     loadTankData(tank.id).catch((err) => setError(err.message));
   }, [tanks, selectedTank]);
@@ -215,6 +220,32 @@ function WaterQuality() {
     }
   };
 
+  const handleThermoFile = async (file) => {
+    if (!file) return;
+    setError('');
+    setScanningTemp(true);
+    try {
+      const image = await fileToDataUrl(file);
+      setThermoPreview(image);
+      let scanned = null;
+      if (tank?.id) {
+        try {
+          scanned = await waterService.scanThermometer(tank.id, image);
+        } catch {
+          scanned = null;
+        }
+      }
+      if (scanned?.temperature == null) {
+        scanned = await readThermometerFromDataUrl(image);
+      }
+      setForm((current) => ({ ...current, temperature: String(scanned.temperature) }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setScanningTemp(false);
+    }
+  };
+
   const handleLog = async (e) => {
     e.preventDefault();
     if (!tank?.id) return;
@@ -238,6 +269,7 @@ function WaterQuality() {
       setDraftId(null);
       setForm(EMPTY_FORM);
       setScanPreview('');
+      setThermoPreview('');
       setFormOpen(false);
       const alerts = Array.isArray(saved.notifies) && saved.notifies.length
         ? saved.notifies
@@ -263,6 +295,7 @@ function WaterQuality() {
     setDraftId(row.id);
     setError('');
     setScanPreview('');
+    setThermoPreview('');
     setFormOpen(true);
   };
 
@@ -347,22 +380,69 @@ function WaterQuality() {
                 ))}
               </div>
 
-              <div
-                className="wq-dropzone wq-dropzone-inline"
-                role="button"
-                tabIndex={0}
-                onClick={() => fileRef.current?.click()}
-                onKeyDown={(e) => { if (e.key === 'Enter') fileRef.current?.click(); }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) handleFile(file);
-                }}
-              >
-                {scanPreview ? <img src={scanPreview} alt="Test kit preview" /> : (
-                  <span>{scanning ? 'Reading photo…' : 'Drop or click to add a test-kit photo'}</span>
-                )}
+              <div className="wq-tools">
+                <div
+                  className={`wq-dropzone wq-dropzone-inline${scanPreview ? ' has-photo' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => fileRef.current?.click()}
+                  onKeyDown={(e) => { if (e.key === 'Enter') fileRef.current?.click(); }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleFile(file);
+                  }}
+                >
+                  {scanPreview ? <img src={scanPreview} alt="Test kit preview" /> : (
+                    <span>{scanning ? 'Reading photo…' : 'Drop or click to add a test-kit photo'}</span>
+                  )}
+                  {scanPreview && (
+                    <button
+                      type="button"
+                      className="wq-drop-clear"
+                      aria-label="Remove test-kit photo"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setScanPreview('');
+                        if (fileRef.current) fileRef.current.value = '';
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <div
+                  className={`wq-dropzone wq-dropzone-inline${thermoPreview ? ' has-photo' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => thermoRef.current?.click()}
+                  onKeyDown={(e) => { if (e.key === 'Enter') thermoRef.current?.click(); }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleThermoFile(file);
+                  }}
+                >
+                  {thermoPreview ? <img src={thermoPreview} alt="Thermometer preview" /> : (
+                    <span>{scanningTemp ? 'Reading thermometer…' : 'Drop or click a thermometer photo to get Temp °C'}</span>
+                  )}
+                  {thermoPreview && (
+                    <button
+                      type="button"
+                      className="wq-drop-clear"
+                      aria-label="Remove thermometer photo"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setThermoPreview('');
+                        if (thermoRef.current) thermoRef.current.value = '';
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
               <input
                 ref={fileRef}
@@ -375,9 +455,20 @@ function WaterQuality() {
                   e.target.value = '';
                 }}
               />
+              <input
+                ref={thermoRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleThermoFile(file);
+                  e.target.value = '';
+                }}
+              />
 
-              <button type="submit" className="btn btn-primary wq-save" disabled={saving || scanning}>
-                {saving ? 'Saving…' : scanning ? 'Reading photo…' : 'Save test'}
+              <button type="submit" className="btn btn-primary wq-save" disabled={saving || scanning || scanningTemp}>
+                {saving ? 'Saving…' : scanning || scanningTemp ? 'Reading photo…' : 'Save test'}
               </button>
             </form>
             )}

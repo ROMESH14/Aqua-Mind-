@@ -222,8 +222,25 @@ async function scanReading(req, res) {
       message: aiResult.data?.message || 'Could not scan the image. Start the AI engine on port 5001.',
     });
   }
-  const scanned = { ...aiResult.data, temperature: null };
+  const scanned = { ...aiResult.data, temperature: aiResult.data.temperature ?? null };
   res.json(scanned);
+}
+
+async function scanThermometer(req, res) {
+  const tank = await tankModel.findById(req.params.tankId, req.user.id);
+  if (!tank) return res.status(404).json({ message: 'Tank not found' });
+  if (!req.body?.image) return res.status(400).json({ message: 'Choose a thermometer photo to scan' });
+
+  const aiResult = await postAI('/scan/thermometer', { image: req.body.image });
+  if (!aiResult.ok || aiResult.data?.temperature == null) {
+    return res.status(503).json({
+      message: aiResult.data?.message || 'Could not read the thermometer. Type the number you see into Temp °C.',
+    });
+  }
+  res.json({
+    temperature: Number(aiResult.data.temperature),
+    note: aiResult.data.note || `Read ${aiResult.data.temperature}°C from the thermometer photo.`,
+  });
 }
 
 function validateReading(body) {
@@ -294,5 +311,6 @@ module.exports = {
   getAssessment,
   getModel,
   scanReading,
+  scanThermometer,
   logReading,
 };

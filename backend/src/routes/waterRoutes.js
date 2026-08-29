@@ -11,6 +11,7 @@ router.get('/tanks/:tankId/latest', asyncHandler(waterController.getLatest));
 router.get('/tanks/:tankId/history', asyncHandler(waterController.getHistory));
 router.get('/tanks/:tankId/assessment', asyncHandler(waterController.getAssessment));
 router.post('/tanks/:tankId/scan', asyncHandler(waterController.scanReading));
+router.post('/tanks/:tankId/scan-thermometer', asyncHandler(waterController.scanThermometer));
 router.post('/tanks/:tankId/readings', asyncHandler(waterController.logReading));
 
 module.exports = router;

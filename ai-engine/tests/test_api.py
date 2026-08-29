@@ -121,3 +121,12 @@ def test_media_from_recommendation(client):
     media = client.get(path)
     assert media.status_code == 200
     assert 'image' in (media.content_type or '')
+
+
+def test_parse_thermometer_text():
+    from src.water_quality_ml import parse_thermometer_text
+    assert parse_thermometer_text('25.4°C') == 25.4
+    assert parse_thermometer_text('Temp 77 F') == 25.0
+    assert parse_thermometer_text('93.5 °F') == 34.2
+    assert parse_thermometer_text('reading 26') == 26.0
+    assert parse_thermometer_text('') is None

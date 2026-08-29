@@ -12,7 +12,7 @@ from .inference import (
     recommend_plants,
     store,
 )
-from .water_quality_ml import scan_test_image
+from .water_quality_ml import scan_test_image, scan_thermometer_image
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
@@ -85,6 +85,19 @@ def post_scan_water_test():
         result = scan_test_image(image)
     except Exception as exc:
         return jsonify({'message': f'Could not read that image: {exc}'}), 400
+    return jsonify(result), 200
+
+
+@app.route('/scan/thermometer', methods=['POST'])
+def post_scan_thermometer():
+    body = request.get_json(silent=True) or {}
+    image = body.get('image')
+    if not image:
+        return jsonify({'message': 'Upload a thermometer photo as image (base64)'}), 400
+    try:
+        result = scan_thermometer_image(image)
+    except Exception as exc:
+        return jsonify({'message': f'Could not read that thermometer: {exc}'}), 400
     return jsonify(result), 200
 
 
