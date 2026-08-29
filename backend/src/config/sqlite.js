@@ -52,6 +52,7 @@ db.exec(`
     TaskName TEXT NOT NULL,
     DueDate TEXT NOT NULL,
     DueTime TEXT,
+    NotifiedAt TEXT,
     IsCompleted INTEGER NOT NULL DEFAULT 0,
     CompletedAt TEXT,
     CreatedAt TEXT DEFAULT (datetime('now'))
@@ -122,5 +123,6 @@ function addColumnIfMissing(table, column, definition) {
 
 addColumnIfMissing('Tanks', 'FishNames', 'TEXT');
 addColumnIfMissing('Tanks', 'PlantNames', 'TEXT');
+addColumnIfMissing('MaintenanceTasks', 'NotifiedAt', 'TEXT');
 
 module.exports = db;

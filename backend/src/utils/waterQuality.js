@@ -7,48 +7,67 @@ function num(reading, ...keys) {
   return null;
 }
 
-function evaluateReading(reading = {}) {
-  const issues = [];
-  let status = 'ok';
-  const ammonia = num(reading, 'Ammonia', 'ammonia');
-  const nitrite = num(reading, 'Nitrite', 'nitrite');
-  const nitrate = num(reading, 'Nitrate', 'nitrate');
-  const pH = num(reading, 'pH', 'ph', 'PH');
-  const temperature = num(reading, 'Temperature', 'temperature');
-  const dissolvedO2 = num(reading, 'DissolvedO2', 'dissolvedO2', 'dissolvedo2');
+const PARAM_SPECS = [
+  { key: 'Ammonia', keys: ['Ammonia', 'ammonia'], label: 'Ammonia', unit: 'ppm', digits: 3, max: 0.01, alertMax: 0.05 },
+  { key: 'Nitrite', keys: ['Nitrite', 'nitrite'], label: 'Nitrite', unit: 'ppm', digits: 3, max: 0.01, alertMax: 0.25 },
+  { key: 'Nitrate', keys: ['Nitrate', 'nitrate'], label: 'Nitrate', unit: 'ppm', digits: 1, max: 20 },
+  { key: 'pH', keys: ['pH', 'ph', 'PH'], label: 'pH', unit: '', digits: 2, min: 6.5, max: 7.8 },
+  { key: 'Temperature', keys: ['Temperature', 'temperature'], label: 'Temperature', unit: '°C', digits: 1, min: 22, max: 30 },
+  { key: 'DissolvedO2', keys: ['DissolvedO2', 'dissolvedO2', 'dissolvedo2'], label: 'Dissolved O₂', unit: 'mg/L', digits: 1, min: 6, alertMin: 4 },
+];
 
-  if (ammonia != null && ammonia > 0.01) {
-    issues.push('Ammonia elevated');
-    status = 'warn';
+function formatParamValue(spec, value) {
+  const shown = value.toFixed(spec.digits);
+  if (spec.unit === '°C') return `${shown}°C`;
+  if (spec.unit) return `${shown} ${spec.unit}`;
+  return shown;
+}
+
+function buildParamAlerts(reading = {}, tankName = '') {
+  const where = tankName ? ` in ${tankName}` : '';
+  const alerts = [];
+
+  for (const spec of PARAM_SPECS) {
+    const value = num(reading, ...spec.keys);
+    if (value == null) continue;
+
+    let direction = null;
+    let alertType = 'warn';
+    if (spec.min != null && value < spec.min) {
+      direction = 'LOW';
+      if (spec.alertMin != null && value < spec.alertMin) alertType = 'alert';
+    } else if (spec.max != null && value > spec.max) {
+      direction = 'HIGH';
+      if (spec.alertMax != null && value > spec.alertMax) alertType = 'alert';
+    }
+    if (!direction) continue;
+
+    alerts.push({
+      key: spec.key,
+      direction,
+      alertType,
+      title: `${spec.label} ${direction}`,
+      detail: `${formatParamValue(spec, value)}${where}`,
+    });
   }
-  if (ammonia != null && ammonia > 0.05) {
-    status = 'alert';
+
+  return alerts;
+}
+
+function evaluateReading(reading = {}) {
+  const alerts = buildParamAlerts(reading);
+  let status = 'ok';
+  for (const item of alerts) {
+    if (item.alertType === 'alert') status = 'alert';
+    else if (status !== 'alert') status = 'warn';
   }
-  if (nitrite != null && nitrite > 0.01) {
-    issues.push('Nitrite elevated');
-    status = status === 'alert' || nitrite > 0.25 ? 'alert' : 'warn';
-  }
-  if (nitrate != null && nitrate > 20) {
-    issues.push('Nitrate high');
-    status = status === 'alert' ? 'alert' : 'warn';
-  }
-  if (pH != null && (pH < 6.5 || pH > 7.8)) {
-    issues.push('pH out of range');
-    status = status === 'alert' ? 'alert' : 'warn';
-  }
-  if (temperature != null && (temperature < 22 || temperature > 30)) {
-    issues.push('Temperature out of range');
-    status = status === 'alert' ? 'alert' : 'warn';
-  }
-  if (dissolvedO2 != null && dissolvedO2 < 6) {
-    issues.push('Dissolved oxygen low');
-    status = status === 'alert' || dissolvedO2 < 4 ? 'alert' : 'warn';
-  }
+  const issues = alerts.map((item) => item.title);
 
   return {
     status,
     statusText: issues.length ? issues.join(', ') : 'All parameters optimal',
     issues,
+    alerts,
   };
 }
 
@@ -170,4 +189,4 @@ function evaluateParam(label, value) {
   return { status, color: paramColor(status === 'good' ? 'good' : status) };
 }
 
-module.exports = { evaluateReading, evaluateParam, fallbackAssessment };
+module.exports = { evaluateReading, evaluateParam, fallbackAssessment, buildParamAlerts };

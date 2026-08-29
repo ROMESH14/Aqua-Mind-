@@ -27,6 +27,8 @@ function Tanks() {
   const [tanks, setTanks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
@@ -57,25 +59,54 @@ function Tanks() {
     }
   };
 
-  const closeCreate = () => {
+  const closeForm = () => {
     setShowModal(false);
+    setEditingId(null);
     setForm(EMPTY_FORM);
   };
 
-  const handleCreate = async (e) => {
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setError('');
+    setShowModal(true);
+  };
+
+  const openEdit = (tank) => {
+    setEditingId(tank.id);
+    setForm({
+      name: tank.name || '',
+      volumeLiters: tank.volumeLiters != null ? String(tank.volumeLiters) : '',
+      tankType: tank.tankType || '',
+      fish: Array.isArray(tank.fishNames) ? tank.fishNames : [],
+      plants: Array.isArray(tank.plantNames) ? tank.plantNames : [],
+    });
+    setError('');
+    setShowModal(true);
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
+    setSaving(true);
+    const payload = {
+      name: form.name,
+      volumeLiters: form.volumeLiters ? parseInt(form.volumeLiters, 10) : null,
+      tankType: form.tankType || null,
+      fishNames: form.fish,
+      plantNames: form.plants,
+    };
     try {
-      await tankService.create({
-        name: form.name,
-        volumeLiters: form.volumeLiters ? parseInt(form.volumeLiters, 10) : null,
-        tankType: form.tankType || null,
-        fishNames: form.fish,
-        plantNames: form.plants,
-      });
-      closeCreate();
+      if (editingId) {
+        await tankService.update(editingId, payload);
+      } else {
+        await tankService.create(payload);
+      }
+      closeForm();
       loadTanks();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -87,7 +118,7 @@ function Tanks() {
     <div className="page-screen">
       <div className="page">
         <PageHero eyebrow="Collection" title="My Tanks" subtitle="Manage and monitor all your aquariums">
-          <button type="button" className="btn btn-primary" onClick={() => setShowModal(true)}>＋ New Tank</button>
+          <button type="button" className="btn btn-primary" onClick={openCreate}>＋ New Tank</button>
         </PageHero>
 
         {error && <div className="form-error" style={{ marginBottom: '1rem' }}>{error}</div>}
@@ -96,19 +127,24 @@ function Tanks() {
           <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>Loading...</div>
         ) : tanks.length === 0 ? (
           <EmptyState icon="🐠" title="No tanks yet" message="Create your first aquarium to start monitoring.">
-            <button type="button" className="btn btn-primary" style={{ marginTop: '12px' }} onClick={() => setShowModal(true)}>＋ Create First Tank</button>
+            <button type="button" className="btn btn-primary" style={{ marginTop: '12px' }} onClick={openCreate}>＋ Create First Tank</button>
           </EmptyState>
         ) : (
           <div className="tanks-grid">
             {tanks.map((tank, i) => (
-              <TankCard key={tank.id} tank={mapTankForCard(tank, i)} onDelete={handleDelete} />
+              <TankCard
+                key={tank.id}
+                tank={mapTankForCard(tank, i)}
+                onEdit={() => openEdit(tank)}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}
 
         {showModal && (
-          <Modal title="New Tank" wide onClose={closeCreate}>
-            <form onSubmit={handleCreate}>
+          <Modal title={editingId ? 'Edit Tank' : 'New Tank'} wide onClose={closeForm}>
+            <form onSubmit={handleSave}>
               <p className="form-intro">Tell us who lives here. Water tests like pH, temperature, and ammonia can be logged later on the Water page.</p>
               <div className="form-group">
                 <label className="form-label">Tank Name *</label>
@@ -161,7 +197,9 @@ function Tanks() {
                 items={form.plants}
                 onChange={(plants) => setForm({ ...form, plants })}
               />
-              <button type="submit" className="auth-btn">Create Tank</button>
+              <button type="submit" className="auth-btn" disabled={saving}>
+                {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create Tank'}
+              </button>
             </form>
           </Modal>
         )}

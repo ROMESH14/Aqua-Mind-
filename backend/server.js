@@ -67,4 +67,5 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   const driver = process.env.DB_DRIVER || 'sqlite';
   console.log(`Server running on port ${PORT} (${driver})`);
+  require('./src/jobs/taskDueNotifier').startTaskDueNotifier();
 });

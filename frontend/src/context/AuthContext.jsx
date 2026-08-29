@@ -45,8 +45,28 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const updateProfile = async (username, email) => {
+    const data = await authService.updateProfile({ username, email });
+    if (data.token) localStorage.setItem('token', data.token);
+    setUser(data.user);
+    return data;
+  };
+
+  const changePassword = (currentPassword, newPassword) => (
+    authService.changePassword({ currentPassword, newPassword })
+  );
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      register,
+      logout,
+      updateProfile,
+      changePassword,
+      isAuthenticated: !!user,
+    }}>
       {children}
     </AuthContext.Provider>
   );

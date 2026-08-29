@@ -171,4 +171,106 @@ async function createLog(userId, data) {
   return result.recordset[0];
 }
 
-module.exports = { getTasksByUser, createTask, findTaskById, toggleComplete, removeTask, countDueToday, countOverdue, countOpen, getLogs, createLog };
+function dueDateParts(value) {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+    return { year, month, day };
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return {
+      year: value.getUTCFullYear(),
+      month: value.getUTCMonth() + 1,
+      day: value.getUTCDate(),
+    };
+  }
+  const match = String(value || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+}
+
+function parseDueAt(task) {
+  const parts = dueDateParts(task.DueDate);
+  const date = parts
+    ? new Date(parts.year, parts.month - 1, parts.day)
+    : new Date(task.DueDate);
+  const match = String(task.DueTime || '00:00').match(/(\d{1,2}):(\d{2})/);
+  date.setHours(match ? Number(match[1]) : 0, match ? Number(match[2]) : 0, 0, 0);
+  return date;
+}
+
+function formatDueClock(dueTime) {
+  const match = String(dueTime || '').match(/(\d{1,2}):(\d{2})/);
+  if (!match) return 'now';
+  const hour24 = Number(match[1]);
+  const minute = match[2];
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${minute} ${period}`;
+}
+
+async function listOpenUnnotified() {
+  const conn = await getPool();
+  if (isSqlite(conn) || isMysql(conn)) {
+    return queryAll(
+      conn,
+      `SELECT mt.*, t.Name AS TankName
+       FROM MaintenanceTasks mt
+       LEFT JOIN Tanks t ON t.TankID = mt.TankID
+       WHERE mt.IsCompleted = 0 AND mt.NotifiedAt IS NULL`
+    );
+  }
+  const result = await conn.pool.request().query(`
+    SELECT mt.*, t.Name AS TankName
+    FROM MaintenanceTasks mt
+    LEFT JOIN Tanks t ON t.TankID = mt.TankID
+    WHERE mt.IsCompleted = 0 AND mt.NotifiedAt IS NULL
+  `);
+  return result.recordset;
+}
+
+async function listDueForNotify() {
+  const open = await listOpenUnnotified();
+  const now = Date.now();
+  return open.filter((task) => {
+    const dueAt = parseDueAt(task);
+    return !Number.isNaN(dueAt.getTime()) && dueAt.getTime() <= now;
+  });
+}
+
+async function markNotified(taskId) {
+  const conn = await getPool();
+  if (isSqlite(conn)) {
+    const info = conn.db.prepare(
+      `UPDATE MaintenanceTasks SET NotifiedAt = datetime('now') WHERE TaskID = ? AND NotifiedAt IS NULL`
+    ).run(taskId);
+    return info.changes > 0;
+  }
+  if (isMysql(conn)) {
+    const info = await execute(
+      conn,
+      'UPDATE MaintenanceTasks SET NotifiedAt = NOW() WHERE TaskID = ? AND NotifiedAt IS NULL',
+      [taskId]
+    );
+    return (info.affectedRows || 0) > 0;
+  }
+  const result = await conn.pool.request().input('taskId', conn.sql.Int, taskId)
+    .query(`UPDATE MaintenanceTasks SET NotifiedAt = GETDATE() WHERE TaskID = @taskId AND NotifiedAt IS NULL`);
+  return result.rowsAffected[0] > 0;
+}
+
+module.exports = {
+  getTasksByUser,
+  createTask,
+  findTaskById,
+  toggleComplete,
+  removeTask,
+  countDueToday,
+  countOverdue,
+  countOpen,
+  getLogs,
+  createLog,
+  parseDueAt,
+  formatDueClock,
+  listDueForNotify,
+  markNotified,
+};

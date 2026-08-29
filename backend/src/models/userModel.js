@@ -53,4 +53,42 @@ async function create({ username, email, passwordHash }) {
   return result.recordset[0];
 }
 
-module.exports = { findByEmail, findByUsername, findById, create };
+async function findAuthById(id) {
+  const conn = await getPool();
+  if (isSqlite(conn) || isMysql(conn)) {
+    return queryOne(conn, 'SELECT * FROM Users WHERE UserID = ?', [id]);
+  }
+  const result = await conn.pool.request()
+    .input('id', conn.sql.Int, id)
+    .query('SELECT * FROM Users WHERE UserID = @id');
+  return result.recordset[0];
+}
+
+async function updateProfile(id, { username, email }) {
+  const conn = await getPool();
+  if (isSqlite(conn) || isMysql(conn)) {
+    await execute(conn, 'UPDATE Users SET Username = ?, Email = ? WHERE UserID = ?', [username, email, id]);
+    return findById(id);
+  }
+  const result = await conn.pool.request()
+    .input('id', conn.sql.Int, id)
+    .input('username', conn.sql.NVarChar, username)
+    .input('email', conn.sql.NVarChar, email)
+    .query(`UPDATE Users SET Username = @username, Email = @email OUTPUT INSERTED.UserID, INSERTED.Username, INSERTED.Email, INSERTED.CreatedAt WHERE UserID = @id`);
+  return result.recordset[0];
+}
+
+async function updatePassword(id, passwordHash) {
+  const conn = await getPool();
+  if (isSqlite(conn) || isMysql(conn)) {
+    await execute(conn, 'UPDATE Users SET PasswordHash = ? WHERE UserID = ?', [passwordHash, id]);
+    return true;
+  }
+  await conn.pool.request()
+    .input('id', conn.sql.Int, id)
+    .input('passwordHash', conn.sql.NVarChar, passwordHash)
+    .query('UPDATE Users SET PasswordHash = @passwordHash WHERE UserID = @id');
+  return true;
+}
+
+module.exports = { findByEmail, findByUsername, findById, findAuthById, create, updateProfile, updatePassword };

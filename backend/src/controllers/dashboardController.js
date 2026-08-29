@@ -13,10 +13,16 @@ function timeAgo(date) {
 }
 
 function formatAlert(alert) {
-  const icons = { alert: '⚠️', warn: '🌡️' };
+  const title = alert.Title || '';
+  let icon = '🔔';
+  if (title.startsWith('Ammonia')) icon = '☠️';
+  else if (title.includes('LOW')) icon = '⬇️';
+  else if (title.includes('HIGH')) icon = '⬆️';
+  else if (alert.AlertType === 'alert') icon = '⚠️';
+  else if (alert.AlertType === 'warn') icon = '🌡️';
   return {
     type: alert.AlertType,
-    icon: icons[alert.AlertType] || '🔔',
+    icon,
     title: alert.Title,
     detail: alert.Detail || '',
     time: timeAgo(alert.CreatedAt),

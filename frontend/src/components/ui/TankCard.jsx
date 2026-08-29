@@ -26,23 +26,41 @@ function SpeciesRow({ item, kind }) {
   );
 }
 
-function TankCard({ tank, onDelete }) {
+function TankCard({ tank, onEdit, onDelete }) {
   return (
     <article className="tank-card">
       <div className="tank-visual" style={{ background: tank.visualBg }}>
-        {onDelete && (
-          <button
-            type="button"
-            className="tank-delete"
-            aria-label={`Delete ${tank.name}`}
-            title="Delete tank"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(tank);
-            }}
-          >
-            −
-          </button>
+        {(onEdit || onDelete) && (
+          <div className="tank-actions">
+            {onEdit && (
+              <button
+                type="button"
+                className="tank-edit"
+                aria-label={`Edit ${tank.name}`}
+                title="Edit tank"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(tank);
+                }}
+              >
+                ✎
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                className="tank-delete"
+                aria-label={`Delete ${tank.name}`}
+                title="Delete tank"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(tank);
+                }}
+              >
+                −
+              </button>
+            )}
+          </div>
         )}
         <div className="tank-rays" />
         <div className="tank-water" style={{ background: tank.waterBg }}>

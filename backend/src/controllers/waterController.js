@@ -1,7 +1,7 @@
 const tankModel = require('../models/tankModel');
 const waterModel = require('../models/waterModel');
 const alertModel = require('../models/alertModel');
-const { evaluateReading, evaluateParam, fallbackAssessment } = require('../utils/waterQuality');
+const { evaluateReading, evaluateParam, fallbackAssessment, buildParamAlerts } = require('../utils/waterQuality');
 const { parseInhabitants } = require('../utils/tankInhabitants');
 
 const path = require('path');
@@ -258,21 +258,33 @@ async function logReading(req, res) {
   const mlStatus = String(assessment?.status || '').toLowerCase();
   const mlBad = assessment && !['excellent', 'ok', 'good'].includes(mlStatus);
 
-  let notify = null;
-  if (evaluation.issues.length || mlBad) {
+  const paramAlerts = buildParamAlerts(reading, tank.Name);
+  const notifies = [];
+  for (const item of paramAlerts) {
+    const row = await alertModel.create(req.user.id, {
+      tankId: parseInt(req.params.tankId, 10),
+      alertType: item.alertType,
+      title: item.title,
+      detail: item.detail,
+    });
+    if (row) notifies.push(alertModel.formatNotify(row));
+  }
+
+  if (!notifies.length && mlBad) {
     const row = await alertModel.create(req.user.id, {
       tankId: parseInt(req.params.tankId, 10),
       alertType: evaluation.status === 'alert' || mlStatus === 'critical' ? 'alert' : 'warn',
-      title: evaluation.issues[0] || assessment?.actions?.[0]?.title || 'Water needs a check',
-      detail: `detected in ${tank.Name}`,
+      title: assessment?.actions?.[0]?.title || 'Water needs a check',
+      detail: `in ${tank.Name}`,
     });
-    notify = row ? alertModel.formatNotify(row) : null;
+    if (row) notifies.push(alertModel.formatNotify(row));
   }
 
   res.status(201).json({
     ...formatted,
     assessment,
-    notify,
+    notify: notifies[0] || null,
+    notifies,
   });
 }
 

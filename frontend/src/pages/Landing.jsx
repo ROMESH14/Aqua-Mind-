@@ -10,14 +10,14 @@ const NAV_SECTIONS = [
   { id: 'how-it-works', label: 'How it works' },
 ];
 
-const HEADER_OFFSET = 80;
+const HEADER_OFFSET = 88;
 
 const features = [
   {
     icon: '◈',
     title: 'Dashboard',
     desc: 'Stats, alerts & temperature trends at a glance.',
-    image: 'deck-tank.png',
+    image: 'deck-dashboard.png',
   },
   {
     icon: '✦',
@@ -35,7 +35,7 @@ const features = [
     icon: '◉',
     title: 'Water Quality',
     desc: 'Track pH, temp, ammonia, nitrite & more.',
-    image: 'deck-fish.png',
+    image: 'deck-water.webp',
   },
   {
     icon: '◷',
@@ -104,8 +104,8 @@ function getDeckCardStyle(index, activeIndex) {
 
   const dir = rel < 0 ? -1 : 1;
   const rotate = dir * (5 + abs * 6);
-  const tx = dir * (24 + abs * 26);
-  const ty = 4 + abs * 6;
+  const tx = dir * (32 + abs * 34);
+  const ty = 4 + abs * 8;
   const scale = Math.max(0.86, 1 - abs * 0.034);
 
   return {
@@ -213,7 +213,7 @@ function Landing() {
       <header className="lp-header">
         <div className="lp-container lp-header-inner">
           <Link to="/" className="lp-header-logo">
-            <Logo size="sm" />
+            <Logo size="md" />
           </Link>
           <nav className="lp-header-nav" aria-label="Page sections">
             {NAV_SECTIONS.map(({ id, label }) => (

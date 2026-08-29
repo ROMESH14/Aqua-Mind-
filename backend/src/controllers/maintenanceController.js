@@ -2,10 +2,19 @@ const maintenanceModel = require('../models/maintenanceModel');
 const tankModel = require('../models/tankModel');
 const alertModel = require('../models/alertModel');
 
+function dueDateKey(value) {
+  if (!value) return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
 function formatTask(task) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const due = new Date(task.DueDate);
+  const key = dueDateKey(task.DueDate);
+  const due = key ? new Date(`${key}T00:00:00`) : new Date(task.DueDate);
   due.setHours(0, 0, 0, 0);
 
   let dueType = 'soon';
@@ -30,7 +39,7 @@ function formatTask(task) {
     due: dueLabel,
     dueType,
     done: !!task.IsCompleted,
-    dueDate: task.DueDate,
+    dueDate: key,
     dueTime: task.DueTime,
   };
 }
@@ -57,8 +66,9 @@ async function createTask(req, res) {
     return res.status(400).json({ message: 'Task name and due date are required' });
   }
 
+  let tank = null;
   if (tankId) {
-    const tank = await tankModel.findById(tankId, req.user.id);
+    tank = await tankModel.findById(tankId, req.user.id);
     if (!tank) return res.status(404).json({ message: 'Tank not found' });
   }
 
@@ -66,19 +76,19 @@ async function createTask(req, res) {
     taskName, dueDate, dueTime, tankId,
   });
 
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const dueAt = maintenanceModel.parseDueAt({ DueDate: dueDate, DueTime: dueTime });
   let notify = null;
-  if (due <= today) {
+  if (!Number.isNaN(dueAt.getTime()) && dueAt.getTime() <= Date.now()) {
+    await maintenanceModel.markNotified(task.TaskID);
+    const tankName = tank?.Name || null;
     const row = await alertModel.create(req.user.id, {
       tankId: tankId || null,
       alertType: 'task',
-      title: `${taskName} is due`,
-      detail: due < today ? 'This care task is overdue' : 'Due today',
+      title: `${taskName} due`,
+      detail: `${dueTime ? maintenanceModel.formatDueClock(dueTime) : 'today'} in ${tankName || 'All tanks'}`,
+      tag: `task-${task.TaskID}`,
     });
-    notify = row ? alertModel.formatNotify(row) : null;
+    notify = row ? alertModel.formatNotify(row, { tag: `task-${task.TaskID}` }) : null;
   }
 
   res.status(201).json({ ...formatTask({ ...task, TankName: null }), notify });

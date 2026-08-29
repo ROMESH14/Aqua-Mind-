@@ -164,7 +164,7 @@ function Dashboard() {
               <SectionHeader icon="💧" title="Water alerts" />
               {data?.alerts?.length > 0 ? (
                 <div className="alerts-list">
-                  {data.alerts.slice(0, 2).map((alert) => (
+                  {data.alerts.slice(0, 4).map((alert) => (
                     <AlertItem key={alert.title + alert.time} {...alert} />
                   ))}
                 </div>

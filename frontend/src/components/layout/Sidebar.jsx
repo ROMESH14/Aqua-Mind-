@@ -16,6 +16,8 @@ const navItems = [
   { path: '/maintenance', label: 'Care', icon: '◷' },
   { path: '/growth', label: 'Growth', icon: '↗' },
   { path: '/equipment', label: 'Gear', icon: '⚙' },
+  { path: '/profile', label: 'Profile', icon: '☺' },
+  { path: '/help', label: 'Help', icon: '?' },
 ];
 
 function Sidebar() {

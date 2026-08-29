@@ -46,10 +46,26 @@ function namesOf(list = []) {
   return list.map((item) => item?.name || item).filter(Boolean);
 }
 
+const CARD_BOUNDS = {
+  pH: { min: 6.5, max: 7.8 },
+  Temperature: { min: 22, max: 30 },
+  Ammonia: { max: 0.01 },
+  Nitrite: { max: 0.01 },
+  Nitrate: { max: 20 },
+  DissolvedO2: { min: 6 },
+};
+
 function cardLabel(param) {
   if (param.status === 'good') return 'Safe';
   if (param.key === 'pH' && Number(param.value) > 14) return 'Invalid';
-  if (param.key === 'DissolvedO2' || (param.key === 'pH' && Number(param.value) < 6.5)) return 'Low';
+
+  const value = Number(param.value);
+  const bounds = CARD_BOUNDS[param.key];
+  if (bounds && !Number.isNaN(value)) {
+    if (bounds.min != null && value < bounds.min) return 'Low';
+    if (bounds.max != null && value > bounds.max) return 'High';
+  }
+
   return param.status === 'bad' ? 'High' : 'Watch';
 }
 
@@ -223,7 +239,10 @@ function WaterQuality() {
       setForm(EMPTY_FORM);
       setScanPreview('');
       setFormOpen(false);
-      if (saved.notify) notify?.announce(saved.notify);
+      const alerts = Array.isArray(saved.notifies) && saved.notifies.length
+        ? saved.notifies
+        : (saved.notify ? [saved.notify] : []);
+      alerts.forEach((item) => notify?.announce(item));
       await loadTankData(tank.id);
     } catch (err) {
       setError(err.message);

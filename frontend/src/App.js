@@ -13,6 +13,8 @@ import PlantedTankAssistant from './pages/PlantedTankAssistant';
 import TankDesigner from './pages/TankDesigner';
 import Growth from './pages/Growth';
 import Equipment from './pages/Equipment';
+import Profile from './pages/Profile';
+import Help from './pages/Help';
 
 function App() {
   return (
@@ -32,6 +34,8 @@ function App() {
             <Route path="maintenance" element={<Maintenance />} />
             <Route path="growth" element={<Growth />} />
             <Route path="equipment" element={<Equipment />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="help" element={<Help />} />
             <Route path="ai" element={<Navigate to="/ai/plants" replace />} />
             <Route path="ai/species" element={<SpeciesAdvisor />} />
             <Route path="ai/predictions" element={<WaterQualityPrediction />} />

@@ -83,6 +83,7 @@ async function ensureSchema(db) {
       TaskName VARCHAR(255) NOT NULL,
       DueDate DATE NOT NULL,
       DueTime VARCHAR(20) NULL,
+      NotifiedAt DATETIME NULL,
       IsCompleted TINYINT(1) NOT NULL DEFAULT 0,
       CompletedAt DATETIME NULL,
       CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -157,6 +158,7 @@ async function ensureSchema(db) {
   await addColumnIfMissing(db, 'Tanks', 'FishNames', 'TEXT NULL');
   await addColumnIfMissing(db, 'Tanks', 'PlantNames', 'TEXT NULL');
   await addColumnIfMissing(db, 'Alerts', 'IsRead', 'TINYINT(1) NOT NULL DEFAULT 0');
+  await addColumnIfMissing(db, 'MaintenanceTasks', 'NotifiedAt', 'DATETIME NULL');
   await db.query('ALTER TABLE Equipment MODIFY Notes MEDIUMTEXT NULL').catch(() => {});
 }
 

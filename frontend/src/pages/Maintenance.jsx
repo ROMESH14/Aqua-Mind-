@@ -51,7 +51,11 @@ function Maintenance() {
   };
 
   const todayKey = dateKey(new Date());
-  const dayTasks = allTasks.filter((task) => dateKey(task.dueDate) === dateKey(selectedDay));
+  const monthPrefix = `${selectedDay.getFullYear()}-${String(selectedDay.getMonth() + 1).padStart(2, '0')}`;
+  const monthLabel = selectedDay.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const monthTasks = allTasks
+    .filter((task) => dateKey(task.dueDate).startsWith(monthPrefix))
+    .sort((a, b) => dateKey(a.dueDate).localeCompare(dateKey(b.dueDate)) || String(a.dueTime || '').localeCompare(String(b.dueTime || '')));
   const upcomingTasks = allTasks
     .filter((task) => !task.done && dateKey(task.dueDate) > todayKey)
     .slice(0, 8);
@@ -129,15 +133,30 @@ function Maintenance() {
           </div>
 
           <div className="card">
-            <SectionHeader icon="📆" iconVariant="light" title="This Week" />
+            <SectionHeader icon="📆" iconVariant="light" title={monthLabel} />
             <TaskCalendar tasks={allTasks} selected={selectedDay} onSelect={setSelectedDay} />
-            {dayTasks.length > 0 ? (
-              <div className="tasks-list" style={{ marginTop: '12px' }}>
-                {dayTasks.map((task) => (
-                  <TaskItem key={task.id} {...task} initialDone={task.done} onToggle={() => handleToggle(task.id)} />
-                ))}
-              </div>
-            ) : null}
+            <div className="task-cal-month">
+              <p className="task-cal-month-title">
+                {monthTasks.length
+                  ? `${monthTasks.length} task${monthTasks.length === 1 ? '' : 's'} in ${monthLabel}`
+                  : `No tasks scheduled in ${monthLabel}`}
+              </p>
+              {monthTasks.length > 0 && (
+                <div className="tasks-list">
+                  {monthTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className={dateKey(task.dueDate) === dateKey(selectedDay) ? 'is-day-selected' : ''}
+                    >
+                      <TaskItem {...task} initialDone={task.done} onToggle={() => handleToggle(task.id)} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!monthTasks.length && (
+                <p className="task-cal-empty">Add a task with a date in this month to see it on the calendar.</p>
+              )}
+            </div>
           </div>
 
           <div className="card maintenance-full">

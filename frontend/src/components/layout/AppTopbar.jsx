@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 
@@ -16,12 +16,14 @@ const searchTargets = [
   { path: '/maintenance', label: 'Care' },
   { path: '/growth', label: 'Growth' },
   { path: '/equipment', label: 'Gear' },
+  { path: '/profile', label: 'Profile' },
+  { path: '/help', label: 'Help' },
   ...plannerChildren,
 ];
 
 function AppTopbar() {
   const [query, setQuery] = useState('');
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const initials = user?.username?.slice(0, 2).toUpperCase() || 'AM';
   const today = new Date().toLocaleDateString('en-GB', {
@@ -59,20 +61,10 @@ function AppTopbar() {
       </form>
       <NotifyBell />
       <div className="app-user">
-        <span>{user?.username || 'Account'}</span>
-        <button
-          type="button"
-          className="app-avatar"
-          title="Sign out"
-          onClick={() => {
-            if (user) {
-              logout();
-              navigate('/');
-            }
-          }}
-        >
+        <Link to="/profile" className="app-user-link">{user?.username || 'Account'}</Link>
+        <Link to="/profile" className="app-avatar" aria-label="Open profile">
           {initials}
-        </button>
+        </Link>
       </div>
     </header>
   );
@@ -80,19 +72,66 @@ function AppTopbar() {
 
 function NotifyBell() {
   const notify = useNotifications();
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (event) => {
+      if (!wrapRef.current?.contains(event.target)) setOpen(false);
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   if (!notify) return null;
 
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next) await notify.openInbox();
+  };
+
   return (
-    <button
-      type="button"
-      className="notify-bell"
-      aria-label="Turn on message alerts"
-      title="Messages pop up here when a tank or task needs you"
-      onClick={() => notify.enableBrowser()}
-    >
-      <span aria-hidden>🔔</span>
-      {notify.unread > 0 && <em>{notify.unread > 9 ? '9+' : notify.unread}</em>}
-    </button>
+    <div className="notify-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="notify-bell"
+        aria-label="Open notifications"
+        aria-expanded={open}
+        onClick={toggle}
+      >
+        <span aria-hidden>🔔</span>
+        {notify.unread > 0 && <em>{notify.unread > 9 ? '9+' : notify.unread}</em>}
+      </button>
+      {open && (
+        <div className="notify-panel" role="dialog" aria-label="Notifications">
+          <p className="notify-panel-title">Notifications</p>
+          {notify.items?.length ? (
+            <ul>
+              {notify.items.map((item) => (
+                <li key={item.id || item.tag || item.title}>
+                  <Link to={item.href || '/dashboard'} onClick={() => setOpen(false)}>
+                    <strong>{item.title}</strong>
+                    {item.detail && <span>{item.detail}</span>}
+                    {item.time && <span>{item.time}</span>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="notify-empty">No notifications yet. Water and task alerts will show here.</p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -122,6 +161,8 @@ function MobileMenuButton() {
           <NavLink to="/maintenance" className="mobile-nav-link" onClick={close}>Care</NavLink>
           <NavLink to="/growth" className="mobile-nav-link" onClick={close}>Growth</NavLink>
           <NavLink to="/equipment" className="mobile-nav-link" onClick={close}>Gear</NavLink>
+          <NavLink to="/profile" className="mobile-nav-link" onClick={close}>Profile</NavLink>
+          <NavLink to="/help" className="mobile-nav-link" onClick={close}>Help</NavLink>
           <button
             type="button"
             className="mobile-nav-link mobile-nav-login"

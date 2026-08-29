@@ -2,7 +2,7 @@ const { getPool, isSqlite, isMysql } = require('../config/db');
 const { queryOne, queryAll, execute, safeLimit } = require('../config/dbHelpers');
 const notifyHub = require('../realtime/notifyHub');
 
-function formatNotify(row) {
+function formatNotify(row, extra = {}) {
   const created = row.CreatedAt || new Date();
   const seconds = Math.floor((Date.now() - new Date(created)) / 1000);
   let time = 'Just now';
@@ -20,10 +20,11 @@ function formatNotify(row) {
     createdAt: created,
     time,
     href: row.AlertType === 'task' ? '/maintenance' : '/water',
+    tag: extra.tag || (row.AlertType === 'task' ? `task-${row.Title}` : undefined),
   };
 }
 
-async function create(userId, { tankId, alertType, title, detail }) {
+async function create(userId, { tankId, alertType, title, detail, tag }) {
   const conn = await getPool();
   let row;
   if (isSqlite(conn) || isMysql(conn)) {
@@ -41,7 +42,7 @@ async function create(userId, { tankId, alertType, title, detail }) {
       .query(`INSERT INTO Alerts (UserID, TankID, AlertType, Title, Detail) OUTPUT INSERTED.* VALUES (@userId, @tankId, @alertType, @title, @detail)`);
     row = result.recordset[0];
   }
-  if (row) notifyHub.sendToUser(userId, 'alert', formatNotify(row));
+  if (row) notifyHub.sendToUser(userId, 'alert', formatNotify(row, { tag }));
   return row;
 }
 
