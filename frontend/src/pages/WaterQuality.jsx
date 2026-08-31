@@ -58,7 +58,7 @@ const CARD_BOUNDS = {
 };
 
 function cardLabel(param) {
-  if (param.status === 'good') return 'Safe';
+  if (param.value == null || param.value === '' || param.status === 'empty') return 'No data';
   if (param.key === 'pH' && Number(param.value) > 14) return 'Invalid';
 
   const value = Number(param.value);
@@ -68,14 +68,14 @@ function cardLabel(param) {
     if (bounds.max != null && value > bounds.max) return 'High';
   }
 
+  if (param.status === 'good' || param.status === 'ok') return 'Safe';
   return param.status === 'bad' ? 'High' : 'Watch';
 }
 
 function validateForm(form) {
-  const filled = FIELDS.some((field) => form[field.key] !== '');
-  if (!filled) return 'Enter at least one reading, or upload a test photo.';
-  for (const field of FIELDS) {
-    if (form[field.key] === '') continue;
+  const filled = FIELDS.filter((field) => form[field.key] !== '');
+  if (filled.length < 3) return 'Fill at least 3 readings (for example pH, temp, and ammonia).';
+  for (const field of filled) {
     const value = Number(form[field.key]);
     if (Number.isNaN(value) || value < field.min || value > field.max) {
       return `${field.label} must be ${field.min}–${field.max}.`;
@@ -175,8 +175,8 @@ function WaterQuality() {
   };
 
   useEffect(() => {
-    Promise.all([tankService.getAll(), waterService.getModel().catch(() => null)])
-      .then(([data]) => {
+    tankService.getAll()
+      .then((data) => {
         setTanks(data);
         setLoading(false);
       })
@@ -373,6 +373,7 @@ function WaterQuality() {
                   <p className="wq-tankbar-kicker">Add today’s test</p>
                   <h2>{tank.name}</h2>
                   <p>{[tank.meta, ...fishNames, ...plantNames].filter(Boolean).join(' · ')}</p>
+                  <p className="wq-draft-note">Fill at least 3 fields, then save.</p>
                 </div>
               </div>
 

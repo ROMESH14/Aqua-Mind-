@@ -141,7 +141,12 @@ function fallbackAssessment(reading, tankName) {
     summary: evaluation.status === 'ok'
       ? `Water looks excellent${where}. Logged parameters are inside the default safe range.`
       : `Water quality needs attention${where}. ${evaluation.statusText}.`,
-    issues: evaluation.issues.map((message) => ({ param: message, value: null, ideal: '', severity: label })),
+    issues: evaluation.alerts.map((item) => ({
+      param: item.key,
+      value: num(reading, ...PARAM_SPECS.find((spec) => spec.key === item.key).keys),
+      ideal: '',
+      severity: item.alertType === 'alert' ? 'critical' : 'watch',
+    })),
     actions,
     species: [],
     unmatched: [],
@@ -163,6 +168,7 @@ function fallbackAssessment(reading, tankName) {
 }
 
 function paramColor(status) {
+  if (status === 'empty') return 'var(--text-secondary)';
   if (status === 'good' || status === 'ok') return 'var(--success)';
   if (status === 'warn') return 'var(--warn)';
   return 'var(--red-light)';
@@ -179,14 +185,23 @@ function evaluateParam(label, value) {
   };
 
   const rule = rules[label];
-  if (!rule || value == null) return { status: 'good', color: 'var(--success)' };
+  if (!rule || value == null || value === '') {
+    return { status: 'empty', color: paramColor('empty') };
+  }
+
+  const number = Number(value);
+  if (Number.isNaN(number)) return { status: 'empty', color: paramColor('empty') };
 
   let status = 'good';
-  if (rule.min != null && value < rule.min) status = 'warn';
-  if (rule.max != null && value > rule.max) status = 'warn';
-  if (label === 'Ammonia' && value > 0.05) status = 'bad';
+  if (rule.min != null && number < rule.min) status = 'warn';
+  if (rule.max != null && number > rule.max) status = 'warn';
+  if (label === 'Ammonia' && number > 0.05) status = 'bad';
+  if (label === 'Nitrite' && number > 0.25) status = 'bad';
+  if (label === 'pH' && (number < 6.0 || number > 8.2)) status = 'bad';
+  if (label === 'DissolvedO2' && number < 4) status = 'bad';
+  if (label === 'Temperature' && (number < 18 || number > 34)) status = 'bad';
 
-  return { status, color: paramColor(status === 'good' ? 'good' : status) };
+  return { status, color: paramColor(status) };
 }
 
 module.exports = { evaluateReading, evaluateParam, fallbackAssessment, buildParamAlerts };

@@ -1,5 +1,3 @@
--- Run this in phpMyAdmin (SQL tab) after creating the database.
--- Database name must have NO spaces: use aquamind (not "aqua_mind ")
 
 CREATE DATABASE IF NOT EXISTS aquamind
   CHARACTER SET utf8mb4
